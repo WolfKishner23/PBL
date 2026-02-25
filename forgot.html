@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset Password — InvoiceFlow</title>
+    <meta name="description" content="Reset your InvoiceFlow password to regain access to your account." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="auth.css" />
+</head>
+
+<body class="auth-body">
+
+    <div class="forgot-wrap">
+
+        <!-- Logo -->
+        <a href="index.html" class="auth-logo centered" aria-label="InvoiceFlow home">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+            </svg>
+            <span>InvoiceFlow</span>
+        </a>
+
+        <!-- Forgot Card -->
+        <div class="auth-card forgot-card">
+
+            <!-- Key Icon -->
+            <div class="forgot-icon">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <circle cx="10" cy="12" r="5" stroke="#3B82F6" stroke-width="2" />
+                    <path d="M14 14l8 8M19 19l3-3M19 19l3 3" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </div>
+
+            <h1 class="auth-heading centered-text">Reset Password</h1>
+            <p class="auth-subtext centered-text">Enter your email and we'll send a reset link</p>
+
+            <form class="auth-form" id="forgotForm">
+                <div class="form-group">
+                    <label class="form-label" for="forgotEmail">Email address</label>
+                    <input type="email" class="form-input" id="forgotEmail" placeholder="name@company.com" required />
+                </div>
+                <button type="submit" class="btn-auth-primary" id="forgotSubmit">Send Reset Link</button>
+            </form>
+
+            <!-- Success state -->
+            <div class="forgot-sent" id="forgotSent" style="display:none;">
+                <div class="forgot-sent-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <circle cx="16" cy="16" r="14" fill="rgba(34,197,94,.12)" stroke="#22C55E" stroke-width="1.5" />
+                        <path d="M10 16l4 4 8-9" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <h2 class="auth-heading centered-text" style="font-size:18px;">Check your email</h2>
+                <p class="auth-subtext centered-text">We've sent a password reset link to your email address.</p>
+            </div>
+
+            <a href="login.html" class="auth-back-link">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                Back to Sign In
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('forgotForm');
+            const sent = document.getElementById('forgotSent');
+            const submitBtn = document.getElementById('forgotSubmit');
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending…';
+
+                setTimeout(() => {
+                    form.style.display = 'none';
+                    sent.style.display = 'block';
+                    sent.style.animation = 'fadeSlide .4s cubic-bezier(.4,0,.2,1)';
+                }, 1200);
+            });
+        });
+    </script>
+
+</body>
+
+</html>

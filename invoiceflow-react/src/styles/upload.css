@@ -1,0 +1,810 @@
+/* ═══════════════════════════════════════════════════
+   InvoiceFlow Upload Page — Styles
+   Extends dashboard.css tokens: #0A0F1E · #3B82F6 · Sora
+   ═══════════════════════════════════════════════════ */
+
+/* ═══════════════════ STEP PROGRESS BAR ═══════════════════ */
+.step-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    padding: 0 20px;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+.step-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--bg-elevated);
+    color: var(--gray-400);
+    border: 2px solid rgba(255, 255, 255, .08);
+    transition: all .4s var(--ease);
+}
+
+.step-item.active .step-circle {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+    box-shadow: 0 0 20px rgba(59, 130, 246, .35), 0 0 40px rgba(59, 130, 246, .15);
+}
+
+.step-item.completed .step-circle {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+    box-shadow: 0 0 16px rgba(34, 197, 94, .3);
+}
+
+.step-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-400);
+    white-space: nowrap;
+    transition: color .3s var(--ease);
+}
+
+.step-item.active .step-label {
+    color: var(--white);
+}
+
+.step-item.completed .step-label {
+    color: var(--green);
+}
+
+.step-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(255, 255, 255, .06);
+    min-width: 40px;
+    max-width: 120px;
+    margin: 0 8px;
+    margin-bottom: 28px;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+.step-line.completed {
+    background: var(--green);
+}
+
+.step-line.completed::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(34, 197, 94, .5), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* ═══════════════════ UPLOAD LAYOUT ═══════════════════ */
+.upload-layout {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.upload-left {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.upload-right {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ═══════════════════ UPLOAD CARD (STEP 1) ═══════════════════ */
+.upload-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--blue), rgba(59, 130, 246, .3));
+    border-radius: 18px 18px 0 0;
+}
+
+/* ─── Dropzone ─── */
+.dropzone {
+    border: 2px dashed rgba(59, 130, 246, .3);
+    border-radius: var(--radius-sm);
+    padding: 48px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .3s var(--ease), background .3s var(--ease), transform .2s var(--ease);
+    position: relative;
+    overflow: hidden;
+}
+
+.dropzone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(59, 130, 246, .04) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.dropzone:hover {
+    border-color: rgba(59, 130, 246, .5);
+    background: rgba(59, 130, 246, .04);
+    transform: translateY(-2px);
+}
+
+.dropzone.drag-over {
+    border-color: var(--blue);
+    background: rgba(59, 130, 246, .08);
+    box-shadow: 0 0 30px rgba(59, 130, 246, .15);
+}
+
+.dropzone-icon {
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 8px rgba(59, 130, 246, .3));
+    animation: floatIcon 3s ease-in-out infinite;
+}
+
+@keyframes floatIcon {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.dropzone-main {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-200);
+}
+
+.dropzone-alt {
+    font-size: 13px;
+    color: var(--gray-400);
+}
+
+.dropzone-link {
+    color: var(--blue);
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.dropzone-link:hover {
+    color: #60A5FA;
+}
+
+.dropzone-hint {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 4px;
+    opacity: .7;
+}
+
+/* ─── Uploaded State ─── */
+.uploaded-state {
+    animation: fadeSlideUp .4s var(--ease);
+}
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.uploaded-file {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    border: 1.5px solid rgba(34, 197, 94, .35);
+    border-radius: var(--radius-sm);
+    background: rgba(34, 197, 94, .04);
+    margin-bottom: 18px;
+    transition: border-color .3s, background .3s;
+}
+
+.uploaded-file:hover {
+    border-color: rgba(34, 197, 94, .5);
+    background: rgba(34, 197, 94, .06);
+}
+
+.uploaded-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 197, 94, .1);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.uploaded-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.uploaded-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.uploaded-size {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gray-400);
+}
+
+.uploaded-replace {
+    font-size: 12px;
+    color: var(--gray-400);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: color .2s, background .2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.uploaded-replace:hover {
+    color: var(--gray-200);
+    background: rgba(255, 255, 255, .06);
+}
+
+.upload-extract-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 24px;
+    font-size: 14px;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-extract-btn::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, .08) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform .5s;
+}
+
+.upload-extract-btn:hover::after {
+    transform: translateX(100%);
+}
+
+/* ═══════════════════ RISK CARD (STEP 3) ═══════════════════ */
+.risk-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.risk-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green), rgba(34, 197, 94, .3));
+    border-radius: 18px 18px 0 0;
+}
+
+/* ─── 2×2 Metric Grid ─── */
+.risk-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.risk-metric-card {
+    background: rgba(255, 255, 255, .025);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .3s var(--ease), transform .2s var(--ease), background .3s;
+}
+
+.risk-metric-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, .035);
+}
+
+.risk-metric-card.green {
+    border-color: rgba(34, 197, 94, .15);
+}
+
+.risk-metric-card.green:hover {
+    border-color: rgba(34, 197, 94, .3);
+}
+
+.risk-metric-card.amber {
+    border-color: rgba(245, 158, 11, .15);
+}
+
+.risk-metric-card.amber:hover {
+    border-color: rgba(245, 158, 11, .3);
+}
+
+.metric-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+}
+
+.metric-value.mono {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    letter-spacing: -0.5px;
+}
+
+.metric-suffix {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-400);
+}
+
+.metric-check {
+    color: var(--green);
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+.metric-tilde {
+    color: var(--amber);
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+/* ─── Risk Meter ─── */
+.risk-meter-section {
+    margin-bottom: 24px;
+}
+
+.risk-meter-bar {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #22C55E 0%, #FACC15 45%, #F59E0B 65%, #EF4444 100%);
+    position: relative;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .3);
+}
+
+.risk-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    border: 3px solid var(--bg-card);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .3), 0 2px 8px rgba(0, 0, 0, .4);
+    transition: left .6s var(--ease);
+    z-index: 2;
+}
+
+.risk-marker::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.risk-meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.risk-meter-labels span:nth-child(1) {
+    color: var(--green);
+}
+
+.risk-meter-labels span:nth-child(2) {
+    color: var(--amber);
+}
+
+.risk-meter-labels span:nth-child(3) {
+    color: var(--red);
+}
+
+/* ─── Recommendation Box ─── */
+.recommendation-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(34, 197, 94, .06);
+    border-left: 3px solid var(--green);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin-bottom: 24px;
+}
+
+.recommendation-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 197, 94, .15);
+    border-radius: 50%;
+    color: var(--green);
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.recommendation-box strong {
+    display: block;
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+}
+
+.recommendation-box p {
+    font-size: 13px;
+    color: var(--gray-300);
+    line-height: 1.5;
+}
+
+/* ─── Risk Actions ─── */
+.risk-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.btn-outline-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-300);
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all .25s var(--ease);
+}
+
+.btn-outline-action:hover {
+    color: var(--white);
+    border-color: rgba(255, 255, 255, .15);
+    background: rgba(255, 255, 255, .04);
+}
+
+/* ═══════════════════ PREVIEW CARD ═══════════════════ */
+.preview-card {
+    position: relative;
+}
+
+.preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.preview-placeholder p {
+    font-size: 13px;
+    color: var(--gray-400);
+}
+
+.preview-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    animation: fadeSlideUp .4s var(--ease);
+}
+
+.preview-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-dim);
+}
+
+.preview-row:last-child {
+    border-bottom: none;
+}
+
+.preview-label {
+    font-size: 13px;
+    color: var(--gray-400);
+    font-weight: 500;
+}
+
+.preview-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    text-align: right;
+}
+
+/* ═══════════════════ SCORING CARD ═══════════════════ */
+.scoring-factors {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.factor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.factor-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.factor-name {
+    font-size: 13px;
+    color: var(--gray-300);
+    font-weight: 500;
+}
+
+.factor-pct {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+}
+
+.factor-pct.mono {
+    font-family: var(--font-mono);
+}
+
+.factor-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, .06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.factor-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 2px;
+    transition: width .8s var(--ease);
+    position: relative;
+}
+
+.factor-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3));
+    border-radius: 0 2px 2px 0;
+}
+
+/* ═══════════════════ ANIMATIONS ═══════════════════ */
+.upload-card,
+.risk-card,
+.preview-card,
+.scoring-card {
+    animation: cardEnter .5s var(--ease) both;
+}
+
+.upload-card {
+    animation-delay: .05s;
+}
+
+.risk-card {
+    animation-delay: .15s;
+}
+
+.preview-card {
+    animation-delay: .1s;
+}
+
+.scoring-card {
+    animation-delay: .2s;
+}
+
+@keyframes cardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.step-progress .step-item {
+    animation: stepFadeIn .4s var(--ease) both;
+}
+
+.step-progress .step-item:nth-child(1) {
+    animation-delay: .1s;
+}
+
+.step-progress .step-item:nth-child(3) {
+    animation-delay: .2s;
+}
+
+.step-progress .step-item:nth-child(5) {
+    animation-delay: .3s;
+}
+
+.step-progress .step-item:nth-child(7) {
+    animation-delay: .4s;
+}
+
+@keyframes stepFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media (max-width: 1080px) {
+    .upload-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-right {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .step-progress {
+        padding: 0 8px;
+    }
+
+    .step-label {
+        font-size: 10px;
+    }
+
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .step-line {
+        min-width: 24px;
+    }
+
+    .upload-right {
+        grid-template-columns: 1fr;
+    }
+
+    .risk-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .dropzone {
+        padding: 32px 20px;
+    }
+
+    .risk-actions {
+        flex-direction: column;
+    }
+
+    .risk-actions .btn-primary,
+    .risk-actions .btn-outline-action {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 500px) {
+    .step-label {
+        display: none;
+    }
+
+    .step-line {
+        margin-bottom: 0;
+    }
+}

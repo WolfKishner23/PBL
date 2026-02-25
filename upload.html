@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Invoice — InvoiceFlow</title>
+    <meta name="description"
+        content="Upload invoices and get AI-powered risk assessment for instant funding on InvoiceFlow." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="upload.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <a href="index.html" class="sidebar-logo" aria-label="InvoiceFlow home">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                    <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+                </svg>
+                <span>InvoiceFlow</span>
+            </a>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-section="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="2" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="2" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="invoices">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    My Invoices
+                </a>
+                <a href="upload.html" class="nav-item active" data-section="upload">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 13V4m0 0L7 7m3-3l3 3" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M3 13v2a2 2 0 002 2h10a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    Upload Invoice
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="cashflow">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 17l4-5 3 3 7-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Cash Flow
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
+                        <path
+                            d="M10 2v2m0 12v2M2 10h2m12 0h2M4.2 4.2l1.4 1.4m8.8 8.8l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+        </div>
+        <div class="sidebar-bottom">
+            <hr class="sidebar-divider" />
+            <div class="user-card">
+                <div class="user-avatar">AM</div>
+                <div class="user-info">
+                    <span class="user-name">Arjun Mehta</span>
+                    <span class="user-role">Business Owner</span>
+                </div>
+                <svg class="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.2" fill="currentColor" />
+                </svg>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════ MAIN ═══════════════════ -->
+    <main class="main">
+
+        <!-- ─── HEADER BAR ─── -->
+        <header class="header-bar">
+            <div class="header-left">
+                <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                </button>
+                <div>
+                    <h1 class="header-greeting">Upload Invoice</h1>
+                    <p class="header-date">Upload and submit for early payment</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="search-box" id="searchBox">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" placeholder="Search invoices…" id="searchInput" />
+                </div>
+                <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path
+                            d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z"
+                            stroke="currentColor" stroke-width="1.5" />
+                        <path d="M8 15a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <span class="notification-dot"></span>
+                </button>
+                <a href="dashboard.html" class="btn-primary" id="headerDashBtn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="2" y="9" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                    </svg>
+                    Dashboard
+                </a>
+            </div>
+        </header>
+
+        <!-- ─── STEP PROGRESS BAR ─── -->
+        <div class="step-progress" id="stepProgress">
+            <div class="step-item active" data-step="1">
+                <div class="step-circle">1</div>
+                <span class="step-label">Upload PDF</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" data-step="2">
+                <div class="step-circle">2</div>
+                <span class="step-label">Review Fields</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" data-step="3">
+                <div class="step-circle">3</div>
+                <span class="step-label">AI Risk Score</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" data-step="4">
+                <div class="step-circle">4</div>
+                <span class="step-label">Submit</span>
+            </div>
+        </div>
+
+        <!-- ─── CONTENT 2-COL ─── -->
+        <div class="upload-layout">
+
+            <!-- ═══ LEFT COLUMN ═══ -->
+            <div class="upload-left">
+
+                <!-- STEP 1 — Upload Card -->
+                <div class="card upload-card" id="uploadCard">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Upload Invoice PDF</h2>
+                            <p class="card-subtitle">Our AI will automatically extract all invoice fields</p>
+                        </div>
+                    </div>
+
+                    <!-- Empty state — dropzone -->
+                    <div class="dropzone" id="dropzone">
+                        <svg class="dropzone-icon" width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <path d="M24 32V14m0 0l-7 7m7-7l7 7" stroke="#3B82F6" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M8 32v4a4 4 0 004 4h24a4 4 0 004-4v-4" stroke="#3B82F6" stroke-width="2.5"
+                                stroke-linecap="round" />
+                            <circle cx="24" cy="24" r="22" stroke="#3B82F6" stroke-width="1" opacity=".15" />
+                        </svg>
+                        <p class="dropzone-main">Drag & drop your invoice PDF here</p>
+                        <p class="dropzone-alt">or <span class="dropzone-link">click to browse</span></p>
+                        <p class="dropzone-hint">PDF, PNG, JPG — max 10MB</p>
+                        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" hidden />
+                    </div>
+
+                    <!-- Uploaded state -->
+                    <div class="uploaded-state" id="uploadedState" style="display:none;">
+                        <div class="uploaded-file">
+                            <div class="uploaded-icon">
+                                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                                    <rect x="4" y="2" width="20" height="24" rx="3" stroke="#22C55E"
+                                        stroke-width="1.5" />
+                                    <path d="M10 10h8M10 14h5" stroke="#22C55E" stroke-width="1.3"
+                                        stroke-linecap="round" />
+                                    <path d="M16 2v6h6" stroke="#22C55E" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                            <div class="uploaded-info">
+                                <span class="uploaded-name">✅ invoice_tata_jan2024.pdf</span>
+                                <span class="uploaded-size">2.4 MB</span>
+                            </div>
+                            <button class="uploaded-replace" id="replaceBtn">Click to replace</button>
+                        </div>
+                        <button class="btn-primary upload-extract-btn" id="extractBtn">
+                            Extract Fields with AI
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3 — AI Risk Score Card -->
+                <div class="card risk-card" id="riskCard">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">AI Risk Assessment</h2>
+                            <p class="card-subtitle">Computed in 1.2 seconds</p>
+                        </div>
+                        <span class="badge risk-low" style="font-size:12px;padding:4px 12px;">Low Risk</span>
+                    </div>
+
+                    <!-- 2x2 metrics -->
+                    <div class="risk-metrics">
+                        <div class="risk-metric-card green">
+                            <span class="metric-label">Overall Score</span>
+                            <span class="metric-value mono">78<span class="metric-suffix">/100</span></span>
+                        </div>
+                        <div class="risk-metric-card green">
+                            <span class="metric-label">Pay History</span>
+                            <span class="metric-value">Excellent <span class="metric-check">✓</span></span>
+                        </div>
+                        <div class="risk-metric-card green">
+                            <span class="metric-label">Debtor Credit</span>
+                            <span class="metric-value">A+ Rating <span class="metric-check">✓</span></span>
+                        </div>
+                        <div class="risk-metric-card amber">
+                            <span class="metric-label">Industry Risk</span>
+                            <span class="metric-value">Moderate <span class="metric-tilde">~</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Meter -->
+                    <div class="risk-meter-section">
+                        <div class="risk-meter-bar">
+                            <div class="risk-marker" style="left:25%"></div>
+                        </div>
+                        <div class="risk-meter-labels">
+                            <span>LOW</span>
+                            <span>MEDIUM</span>
+                            <span>HIGH</span>
+                        </div>
+                    </div>
+
+                    <!-- Recommendation -->
+                    <div class="recommendation-box">
+                        <span class="recommendation-icon">✓</span>
+                        <div>
+                            <strong>Recommended for Funding</strong>
+                            <p>This invoice has a low risk profile. Finance partners will approve quickly.</p>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="risk-actions">
+                        <button class="btn-outline-action" id="backBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Back
+                        </button>
+                        <button class="btn-primary" id="submitFundingBtn">
+                            Submit for Funding
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ RIGHT COLUMN ═══ -->
+            <div class="upload-right">
+
+                <!-- Invoice Preview -->
+                <div class="card preview-card" id="previewCard">
+                    <div class="card-header">
+                        <h2 class="card-title">Invoice Preview</h2>
+                    </div>
+
+                    <!-- Placeholder (before upload) -->
+                    <div class="preview-placeholder" id="previewPlaceholder">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                            <rect x="6" y="4" width="28" height="32" rx="4" stroke="#334155" stroke-width="1.5"
+                                stroke-dasharray="4 3" />
+                            <path d="M14 16h12M14 22h8M14 28h10" stroke="#334155" stroke-width="1.3"
+                                stroke-linecap="round" />
+                        </svg>
+                        <p>Upload a file to see preview</p>
+                    </div>
+
+                    <!-- Filled preview (after upload) -->
+                    <div class="preview-fields" id="previewFields" style="display:none;">
+                        <div class="preview-row">
+                            <span class="preview-label">Invoice #</span>
+                            <span class="preview-value">INV-2024-009</span>
+                        </div>
+                        <div class="preview-row">
+                            <span class="preview-label">Amount</span>
+                            <span class="preview-value">₹3,50,000</span>
+                        </div>
+                        <div class="preview-row">
+                            <span class="preview-label">Debtor</span>
+                            <span class="preview-value">Tata Steel Ltd</span>
+                        </div>
+                        <div class="preview-row">
+                            <span class="preview-label">Due Date</span>
+                            <span class="preview-value">Mar 25, 2024</span>
+                        </div>
+                        <div class="preview-row">
+                            <span class="preview-label">Terms</span>
+                            <span class="preview-value">Net 60</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How AI Scoring Works -->
+                <div class="card scoring-card">
+                    <div class="card-header">
+                        <h2 class="card-title">How AI Scoring Works</h2>
+                    </div>
+                    <div class="scoring-factors">
+                        <div class="factor">
+                            <div class="factor-top">
+                                <span class="factor-name">Debtor credit history</span>
+                                <span class="factor-pct mono">40%</span>
+                            </div>
+                            <div class="factor-bar">
+                                <div class="factor-fill" style="width:80%"></div>
+                            </div>
+                        </div>
+                        <div class="factor">
+                            <div class="factor-top">
+                                <span class="factor-name">Payment track record</span>
+                                <span class="factor-pct mono">30%</span>
+                            </div>
+                            <div class="factor-bar">
+                                <div class="factor-fill" style="width:60%"></div>
+                            </div>
+                        </div>
+                        <div class="factor">
+                            <div class="factor-top">
+                                <span class="factor-name">Industry risk index</span>
+                                <span class="factor-pct mono">20%</span>
+                            </div>
+                            <div class="factor-bar">
+                                <div class="factor-fill" style="width:40%"></div>
+                            </div>
+                        </div>
+                        <div class="factor">
+                            <div class="factor-top">
+                                <span class="factor-name">Invoice authenticity</span>
+                                <span class="factor-pct mono">10%</span>
+                            </div>
+                            <div class="factor-bar">
+                                <div class="factor-fill" style="width:20%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <script src="upload.js"></script>
+</body>
+
+</html>

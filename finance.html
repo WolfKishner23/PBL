@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance Partner — InvoiceFlow</title>
+    <meta name="description"
+        content="InvoiceFlow Finance Partner Dashboard — review invoices, assess risk, and approve funding deals." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="finance.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <a href="index.html" class="sidebar-logo" aria-label="InvoiceFlow home">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                    <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+                </svg>
+                <span>InvoiceFlow</span>
+            </a>
+            <nav class="sidebar-nav">
+                <a href="finance.html" class="nav-item active" data-section="finance-dashboard">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 17l4-5 3 3 7-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <rect x="2" y="2" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                    Finance Dashboard
+                </a>
+                <a href="#" class="nav-item" data-section="queue">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    Invoice Queue
+                </a>
+                <a href="#" class="nav-item" data-section="portfolio">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M10 3v7h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Portfolio
+                </a>
+                <a href="#" class="nav-item" data-section="analytics">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="10" width="3" height="7" rx="1" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="8.5" y="6" width="3" height="11" rx="1" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.3" />
+                    </svg>
+                    Analytics
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
+                        <path
+                            d="M10 2v2m0 12v2M2 10h2m12 0h2M4.2 4.2l1.4 1.4m8.8 8.8l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+        </div>
+        <div class="sidebar-bottom">
+            <hr class="sidebar-divider" />
+            <div class="user-card">
+                <div class="user-avatar">SP</div>
+                <div class="user-info">
+                    <span class="user-name">Sanjay Patel</span>
+                    <span class="user-role">Finance Partner</span>
+                </div>
+                <svg class="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.2" fill="currentColor" />
+                </svg>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════ MAIN ═══════════════════ -->
+    <main class="main">
+
+        <!-- ─── HEADER BAR ─── -->
+        <header class="header-bar">
+            <div class="header-left">
+                <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                </button>
+                <div>
+                    <h1 class="header-greeting">Finance Dashboard</h1>
+                    <p class="header-date">Review, assess, and fund invoices</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="live-ticker">
+                    <span class="ticker-dot"></span>
+                    <span class="ticker-label">LIVE</span>
+                </div>
+                <div class="search-box" id="searchBox">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" placeholder="Search invoices…" id="searchInput" />
+                </div>
+                <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path
+                            d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z"
+                            stroke="currentColor" stroke-width="1.5" />
+                        <path d="M8 15a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <span class="notification-dot"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ─── STAT CARDS ─── -->
+        <section class="stat-cards" id="statCards">
+            <div class="stat-card" data-accent="amber">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Queue Size</span>
+                    <div class="stat-card-icon amber">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="12">12</span>
+                <span class="stat-card-trend up">↑ 4 new today</span>
+            </div>
+            <div class="stat-card" data-accent="green">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Total Funded</span>
+                    <div class="stat-card-icon green">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4-.9 4-2"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="2.4">₹2.4Cr</span>
+                <span class="stat-card-trend up">↑ 12% this quarter</span>
+            </div>
+            <div class="stat-card" data-accent="blue">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Active Deals</span>
+                    <div class="stat-card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 17l4-5 3 3 7-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="34">34</span>
+            </div>
+            <div class="stat-card" data-accent="purple">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Avg Return</span>
+                    <div class="stat-card-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="3.2">3.2%</span>
+                <span class="stat-card-trend neutral">per 30 days</span>
+            </div>
+        </section>
+
+        <!-- ─── QUEUE + DETAIL LAYOUT ─── -->
+        <div class="finance-layout" id="financeLayout">
+
+            <!-- ═══ INVOICE QUEUE TABLE ═══ -->
+            <section class="card table-card queue-card" id="queueCard">
+                <div class="table-header">
+                    <div class="table-header-left">
+                        <h2 class="card-title">Invoice Queue</h2>
+                        <div class="table-tabs" id="tableTabs">
+                            <button class="tab active" data-filter="all">All</button>
+                            <button class="tab" data-filter="low">Low Risk</button>
+                            <button class="tab" data-filter="medium">Medium</button>
+                            <button class="tab" data-filter="high">High Risk</button>
+                        </div>
+                    </div>
+                    <div class="queue-meta">
+                        <span class="queue-count"><span class="mono">12</span> invoices</span>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="invoice-table finance-table" id="financeTable">
+                        <thead>
+                            <tr>
+                                <th>Invoice ID</th>
+                                <th>Company</th>
+                                <th>Amount</th>
+                                <th>Risk Score</th>
+                                <th>Days Left</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-risk="medium" data-id="INV-2024-003" data-company="Infosys BPO"
+                                data-amount="₹63,200" data-score="62" data-days="18" data-debtor="88" data-payment="76"
+                                data-validity="95" data-industry="51">
+                                <td class="td-id">INV-2024-003</td>
+                                <td>Infosys BPO</td>
+                                <td class="td-amount">₹63,200</td>
+                                <td>
+                                    <div class="risk-circle amber">62</div>
+                                </td>
+                                <td><span class="days-badge">18 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                            <tr data-risk="low" data-id="INV-2024-004" data-company="HDFC Bank" data-amount="₹2,90,000"
+                                data-score="88" data-days="23" data-debtor="92" data-payment="85" data-validity="98"
+                                data-industry="72">
+                                <td class="td-id">INV-2024-004</td>
+                                <td>HDFC Bank</td>
+                                <td class="td-amount">₹2,90,000</td>
+                                <td>
+                                    <div class="risk-circle green">88</div>
+                                </td>
+                                <td><span class="days-badge">23 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                            <tr data-risk="low" data-id="INV-2024-007" data-company="Mahindra Group"
+                                data-amount="₹1,95,000" data-score="91" data-days="30" data-debtor="94"
+                                data-payment="89" data-validity="97" data-industry="78">
+                                <td class="td-id">INV-2024-007</td>
+                                <td>Mahindra Group</td>
+                                <td class="td-amount">₹1,95,000</td>
+                                <td>
+                                    <div class="risk-circle green">91</div>
+                                </td>
+                                <td><span class="days-badge">30 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                            <tr data-risk="high" data-id="INV-2024-008" data-company="Ola Electric"
+                                data-amount="₹55,000" data-score="34" data-days="45" data-debtor="42" data-payment="28"
+                                data-validity="65" data-industry="21">
+                                <td class="td-id">INV-2024-008</td>
+                                <td>Ola Electric</td>
+                                <td class="td-amount">₹55,000</td>
+                                <td>
+                                    <div class="risk-circle red">34</div>
+                                </td>
+                                <td><span class="days-badge warn">45 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                            <tr data-risk="low" data-id="INV-2024-009" data-company="Tata Steel Ltd"
+                                data-amount="₹3,50,000" data-score="78" data-days="25" data-debtor="86"
+                                data-payment="80" data-validity="92" data-industry="68">
+                                <td class="td-id">INV-2024-009</td>
+                                <td>Tata Steel Ltd</td>
+                                <td class="td-amount">₹3,50,000</td>
+                                <td>
+                                    <div class="risk-circle green">78</div>
+                                </td>
+                                <td><span class="days-badge">25 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                            <tr data-risk="medium" data-id="INV-2024-010" data-company="Bajaj Finance"
+                                data-amount="₹1,12,000" data-score="55" data-days="35" data-debtor="60"
+                                data-payment="52" data-validity="88" data-industry="44">
+                                <td class="td-id">INV-2024-010</td>
+                                <td>Bajaj Finance</td>
+                                <td class="td-amount">₹1,12,000</td>
+                                <td>
+                                    <div class="risk-circle amber">55</div>
+                                </td>
+                                <td><span class="days-badge">35 days</span></td>
+                                <td class="td-actions">
+                                    <button class="btn-approve" data-action="approve">Approve</button>
+                                    <button class="btn-reject" data-action="reject">Reject</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ═══ DETAIL PANEL ═══ -->
+            <aside class="detail-panel" id="detailPanel">
+                <div class="detail-empty" id="detailEmpty">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <rect x="8" y="6" width="32" height="36" rx="5" stroke="#334155" stroke-width="1.5"
+                            stroke-dasharray="4 3" />
+                        <path d="M18 18h12M18 24h8M18 30h10" stroke="#334155" stroke-width="1.3"
+                            stroke-linecap="round" />
+                    </svg>
+                    <p>Select an invoice to view details</p>
+                </div>
+
+                <div class="detail-content" id="detailContent" style="display:none;">
+                    <div class="detail-header">
+                        <div>
+                            <h3 class="detail-id" id="detailId">INV-2024-004</h3>
+                            <p class="detail-company" id="detailCompany">HDFC Bank</p>
+                        </div>
+                        <button class="detail-close" id="detailClose" aria-label="Close panel">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- 2x2 grid -->
+                    <div class="detail-metrics">
+                        <div class="detail-metric">
+                            <span class="detail-metric-label">Amount</span>
+                            <span class="detail-metric-value mono" id="detailAmount">₹2,90,000</span>
+                        </div>
+                        <div class="detail-metric">
+                            <span class="detail-metric-label">Risk Score</span>
+                            <span class="detail-metric-value" id="detailScore">
+                                <span class="risk-circle-sm green" id="detailScoreCircle">88</span>
+                            </span>
+                        </div>
+                        <div class="detail-metric">
+                            <span class="detail-metric-label">Days Left</span>
+                            <span class="detail-metric-value mono" id="detailDays">23</span>
+                        </div>
+                        <div class="detail-metric">
+                            <span class="detail-metric-label">Risk Level</span>
+                            <span class="detail-metric-value" id="detailRiskLevel">
+                                <span class="badge risk-low">Low</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- AI Breakdown -->
+                    <div class="detail-section">
+                        <h4 class="detail-section-title">AI Risk Breakdown</h4>
+                        <div class="detail-bars">
+                            <div class="detail-bar-item">
+                                <div class="detail-bar-top">
+                                    <span>Debtor Credit</span>
+                                    <span class="mono detail-bar-val" id="barDebtor">88</span>
+                                </div>
+                                <div class="detail-bar-track">
+                                    <div class="detail-bar-fill green" id="barDebtorFill" style="width:88%"></div>
+                                </div>
+                            </div>
+                            <div class="detail-bar-item">
+                                <div class="detail-bar-top">
+                                    <span>Payment History</span>
+                                    <span class="mono detail-bar-val" id="barPayment">76</span>
+                                </div>
+                                <div class="detail-bar-track">
+                                    <div class="detail-bar-fill green" id="barPaymentFill" style="width:76%"></div>
+                                </div>
+                            </div>
+                            <div class="detail-bar-item">
+                                <div class="detail-bar-top">
+                                    <span>Invoice Validity</span>
+                                    <span class="mono detail-bar-val" id="barValidity">95</span>
+                                </div>
+                                <div class="detail-bar-track">
+                                    <div class="detail-bar-fill green" id="barValidityFill" style="width:95%"></div>
+                                </div>
+                            </div>
+                            <div class="detail-bar-item">
+                                <div class="detail-bar-top">
+                                    <span>Industry Risk</span>
+                                    <span class="mono detail-bar-val" id="barIndustry">51</span>
+                                </div>
+                                <div class="detail-bar-track">
+                                    <div class="detail-bar-fill amber" id="barIndustryFill" style="width:51%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="detail-actions">
+                        <button class="btn-detail-approve" id="detailApproveBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M2.5 7l3 3 6-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg>
+                            Approve
+                        </button>
+                        <button class="btn-detail-reject" id="detailRejectBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" stroke-width="1.8"
+                                    stroke-linecap="round" />
+                            </svg>
+                            Reject
+                        </button>
+                        <button class="btn-detail-counter" id="detailCounterBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                            Counter Offer
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- ─── PORTFOLIO SECTION ─── -->
+        <section class="portfolio-bar" id="portfolioBar">
+            <h2 class="portfolio-title">Portfolio Overview</h2>
+            <div class="portfolio-stats">
+                <div class="portfolio-stat">
+                    <span class="portfolio-label">Total Deployed</span>
+                    <span class="portfolio-value mono">₹2.4Cr</span>
+                </div>
+                <div class="portfolio-divider"></div>
+                <div class="portfolio-stat">
+                    <span class="portfolio-label">Avg Return</span>
+                    <span class="portfolio-value mono green">3.2%</span>
+                </div>
+                <div class="portfolio-divider"></div>
+                <div class="portfolio-stat">
+                    <span class="portfolio-label">Active Deals</span>
+                    <span class="portfolio-value mono">34</span>
+                </div>
+                <div class="portfolio-divider"></div>
+                <div class="portfolio-stat">
+                    <span class="portfolio-label">Completed</span>
+                    <span class="portfolio-value mono">128</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <script src="finance.js"></script>
+</body>
+
+</html>

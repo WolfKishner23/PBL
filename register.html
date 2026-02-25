@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account — InvoiceFlow</title>
+    <meta name="description"
+        content="Create your InvoiceFlow account to start uploading invoices and get funded instantly." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="auth.css" />
+</head>
+
+<body class="auth-body">
+
+    <div class="register-wrap">
+
+        <!-- Logo -->
+        <a href="index.html" class="auth-logo centered" aria-label="InvoiceFlow home">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+            </svg>
+            <span>InvoiceFlow</span>
+        </a>
+
+        <!-- Register Card -->
+        <div class="auth-card register-card">
+
+            <!-- Step Progress -->
+            <div class="reg-steps" id="regSteps">
+                <div class="reg-step active" data-step="1">
+                    <div class="reg-step-circle">1</div>
+                    <span class="reg-step-label">Account</span>
+                </div>
+                <div class="reg-step-line"></div>
+                <div class="reg-step" data-step="2">
+                    <div class="reg-step-circle">2</div>
+                    <span class="reg-step-label">Business</span>
+                </div>
+                <div class="reg-step-line"></div>
+                <div class="reg-step" data-step="3">
+                    <div class="reg-step-circle">3</div>
+                    <span class="reg-step-label">Done</span>
+                </div>
+            </div>
+
+            <!-- ═══ STEP 1 — Account Setup ═══ -->
+            <div class="reg-panel" id="regStep1">
+                <h1 class="auth-heading">Create your account</h1>
+                <p class="auth-subtext">Choose your role and set up credentials</p>
+
+                <!-- Role Selector -->
+                <div class="role-selector" id="roleSelector">
+                    <div class="role-card selected" data-role="business">
+                        <span class="role-icon">🏢</span>
+                        <strong class="role-title">Business Owner</strong>
+                        <span class="role-desc">Upload invoices & get funded</span>
+                    </div>
+                    <div class="role-card" data-role="finance">
+                        <span class="role-icon">🏦</span>
+                        <strong class="role-title">Finance Partner</strong>
+                        <span class="role-desc">Review & fund invoices</span>
+                    </div>
+                </div>
+
+                <form class="auth-form" id="step1Form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="firstName">First Name</label>
+                            <input type="text" class="form-input" id="firstName" placeholder="Arjun" required />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="lastName">Last Name</label>
+                            <input type="text" class="form-input" id="lastName" placeholder="Mehta" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regEmail">Email address</label>
+                        <input type="email" class="form-input" id="regEmail" placeholder="name@company.com" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="regPassword">Password</label>
+                        <input type="password" class="form-input" id="regPassword" placeholder="Min 8 characters"
+                            required />
+                    </div>
+                    <button type="submit" class="btn-auth-primary">
+                        Continue
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7h8m0 0L7 3m4 4L7 11" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </form>
+
+                <p class="auth-footer-text">
+                    Already have an account?
+                    <a href="login.html" class="form-link">Sign in</a>
+                </p>
+            </div>
+
+            <!-- ═══ STEP 2 — Business Details ═══ -->
+            <div class="reg-panel" id="regStep2" style="display:none;">
+                <h1 class="auth-heading">Business details</h1>
+                <p class="auth-subtext">Tell us about your company</p>
+
+                <form class="auth-form" id="step2Form">
+                    <div class="form-group">
+                        <label class="form-label" for="companyName">Company Name</label>
+                        <input type="text" class="form-input" id="companyName"
+                            placeholder="e.g. Mehta Enterprises Pvt Ltd" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="gstNumber">GST Number</label>
+                        <input type="text" class="form-input" id="gstNumber" placeholder="22AAAAA0000A1Z5" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="industry">Industry</label>
+                        <select class="form-input form-select" id="industry" required>
+                            <option value="" disabled selected>Select industry</option>
+                            <option value="manufacturing">Manufacturing</option>
+                            <option value="it">IT & Software</option>
+                            <option value="retail">Retail & E-commerce</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="finance">Financial Services</option>
+                            <option value="construction">Construction</option>
+                            <option value="logistics">Logistics & Supply Chain</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="revenue">Annual Revenue</label>
+                        <select class="form-input form-select" id="revenue" required>
+                            <option value="" disabled selected>Select range</option>
+                            <option value="0-25l">Under ₹25 Lakhs</option>
+                            <option value="25l-1cr">₹25 Lakhs — ₹1 Crore</option>
+                            <option value="1cr-5cr">₹1 Crore — ₹5 Crore</option>
+                            <option value="5cr-25cr">₹5 Crore — ₹25 Crore</option>
+                            <option value="25cr+">₹25 Crore+</option>
+                        </select>
+                    </div>
+                    <div class="form-actions-row">
+                        <button type="button" class="btn-auth-secondary" id="step2Back">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Back
+                        </button>
+                        <button type="submit" class="btn-auth-primary">
+                            Create Account
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M3 7h8m0 0L7 3m4 4L7 11" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ═══ STEP 3 — Success ═══ -->
+            <div class="reg-panel" id="regStep3" style="display:none;">
+                <div class="success-screen">
+                    <div class="success-circle">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                            <path d="M10 20l7 7 13-15" stroke="#22C55E" stroke-width="3.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h1 class="auth-heading">Account Created!</h1>
+                    <p class="auth-subtext">Welcome to InvoiceFlow. You're all set to start.</p>
+                    <a href="dashboard.html" class="btn-auth-primary" style="text-align:center;">
+                        Go to Dashboard
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7h8m0 0L7 3m4 4L7 11" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const steps = document.querySelectorAll('.reg-step');
+            const lines = document.querySelectorAll('.reg-step-line');
+            const panels = [
+                document.getElementById('regStep1'),
+                document.getElementById('regStep2'),
+                document.getElementById('regStep3')
+            ];
+
+            function goToStep(n) {
+                panels.forEach((p, i) => {
+                    p.style.display = i === n - 1 ? 'block' : 'none';
+                    if (i === n - 1) {
+                        p.style.animation = 'none';
+                        p.offsetHeight;
+                        p.style.animation = 'fadeSlide .35s cubic-bezier(.4,0,.2,1)';
+                    }
+                });
+                steps.forEach((s, i) => {
+                    s.classList.remove('active', 'completed');
+                    const sn = i + 1;
+                    if (sn < n) {
+                        s.classList.add('completed');
+                        s.querySelector('.reg-step-circle').textContent = '✓';
+                    } else if (sn === n) {
+                        s.classList.add('active');
+                        s.querySelector('.reg-step-circle').textContent = sn;
+                    } else {
+                        s.querySelector('.reg-step-circle').textContent = sn;
+                    }
+                });
+                lines.forEach((l, i) => {
+                    l.classList.toggle('completed', i < n - 1);
+                });
+            }
+
+            // Role selector
+            const roleCards = document.querySelectorAll('.role-card');
+            roleCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    roleCards.forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                });
+            });
+
+            // Step 1 → 2
+            document.getElementById('step1Form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                goToStep(2);
+            });
+
+            // Step 2 → 3
+            document.getElementById('step2Form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                goToStep(3);
+            });
+
+            // Step 2 back
+            document.getElementById('step2Back').addEventListener('click', () => goToStep(1));
+        });
+    </script>
+
+</body>
+
+</html>

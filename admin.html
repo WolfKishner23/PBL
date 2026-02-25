@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — InvoiceFlow</title>
+    <meta name="description"
+        content="InvoiceFlow Admin Dashboard — manage users, monitor analytics, and track system health." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="admin.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <a href="index.html" class="sidebar-logo" aria-label="InvoiceFlow home">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                    <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+                </svg>
+                <span>InvoiceFlow</span>
+            </a>
+            <nav class="sidebar-nav">
+                <a href="admin.html" class="nav-item active" data-section="admin">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="2" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="2" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                    Admin
+                </a>
+                <a href="#" class="nav-item" data-section="users">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    Users
+                </a>
+                <a href="#" class="nav-item" data-section="invoices">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    Invoices
+                </a>
+                <a href="#" class="nav-item" data-section="analytics">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="10" width="3" height="7" rx="1" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="8.5" y="6" width="3" height="11" rx="1" stroke="currentColor" stroke-width="1.3" />
+                        <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.3" />
+                    </svg>
+                    Analytics
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
+                        <path
+                            d="M10 2v2m0 12v2M2 10h2m12 0h2M4.2 4.2l1.4 1.4m8.8 8.8l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+        </div>
+        <div class="sidebar-bottom">
+            <hr class="sidebar-divider" />
+            <div class="user-card">
+                <div class="user-avatar admin-avatar">SU</div>
+                <div class="user-info">
+                    <span class="user-name">Super Admin</span>
+                    <span class="user-role">System Admin</span>
+                </div>
+                <svg class="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.2" fill="currentColor" />
+                </svg>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════ MAIN ═══════════════════ -->
+    <main class="main">
+
+        <!-- ─── HEADER BAR ─── -->
+        <header class="header-bar">
+            <div class="header-left">
+                <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                </button>
+                <div>
+                    <h1 class="header-greeting">Admin Dashboard</h1>
+                    <p class="header-date">Platform management & monitoring</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="system-status-pill">
+                    <span class="status-dot green"></span>
+                    <span class="status-text">All Systems Operational</span>
+                </div>
+                <div class="search-box" id="searchBox">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" placeholder="Search users…" id="searchInput" />
+                </div>
+                <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path
+                            d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z"
+                            stroke="currentColor" stroke-width="1.5" />
+                        <path d="M8 15a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <span class="notification-dot"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ─── STAT CARDS ─── -->
+        <section class="stat-cards" id="statCards">
+            <div class="stat-card" data-accent="blue">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Total Users</span>
+                    <div class="stat-card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="2412">2,412</span>
+                <span class="stat-card-trend up">↑ 124 this month</span>
+            </div>
+            <div class="stat-card" data-accent="green">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Invoice Volume</span>
+                    <div class="stat-card-icon green">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4-.9 4-2"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value">₹24Cr</span>
+                <span class="stat-card-trend up">↑ this month</span>
+            </div>
+            <div class="stat-card" data-accent="amber">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Approval Rate</span>
+                    <div class="stat-card-icon amber">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 8l4 4 6-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value">74%</span>
+            </div>
+            <div class="stat-card" data-accent="purple">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Default Rate</span>
+                    <div class="stat-card-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3-4.9-2.6L5.1 18l.9-5.3-4-3.9 5.5-.8L10 2z"
+                                stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value">1.2%</span>
+                <span class="stat-card-trend down">↓ 0.3% vs last month</span>
+            </div>
+        </section>
+
+        <!-- ─── MAIN TABS ─── -->
+        <section class="card admin-content-card" id="adminContent">
+            <div class="admin-tabs-bar">
+                <div class="admin-tabs" id="adminTabs">
+                    <button class="admin-tab active" data-tab="users">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <circle cx="8" cy="5.5" r="3" stroke="currentColor" stroke-width="1.3" />
+                            <path d="M2.5 14c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5" stroke="currentColor"
+                                stroke-width="1.3" stroke-linecap="round" />
+                        </svg>
+                        Users
+                    </button>
+                    <button class="admin-tab" data-tab="analytics">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <rect x="2" y="8" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.2" />
+                            <rect x="6.5" y="4" width="3" height="10" rx="1" stroke="currentColor" stroke-width="1.2" />
+                            <rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" stroke-width="1.2" />
+                        </svg>
+                        Analytics
+                    </button>
+                    <button class="admin-tab" data-tab="health">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <rect x="1.5" y="4" width="13" height="8" rx="2" stroke="currentColor" stroke-width="1.3" />
+                            <circle cx="5" cy="8" r="1" fill="currentColor" />
+                            <path d="M8 6v4M10 6v4M12 6v4" stroke="currentColor" stroke-width="1"
+                                stroke-linecap="round" />
+                        </svg>
+                        System Health
+                    </button>
+                </div>
+            </div>
+
+            <!-- ═══ TAB 1 — USERS TABLE ═══ -->
+            <div class="tab-panel" id="tabUsers">
+                <div class="table-scroll">
+                    <table class="invoice-table admin-table" id="adminTable">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Invoices</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar blue">RN</div>
+                                        <span class="table-user-name">Rohan Natekar</span>
+                                    </div>
+                                </td>
+                                <td class="td-email">rohan@tatasteel.com</td>
+                                <td><span class="badge role-business">Business</span></td>
+                                <td><span class="badge status-active">Active</span></td>
+                                <td class="td-amount">12</td>
+                                <td>Jan 5</td>
+                                <td class="td-actions-admin">
+                                    <button class="btn-icon-action view" aria-label="View user">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
+                                                stroke="currentColor" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar green">KL</div>
+                                        <span class="table-user-name">Krishna Lavhe</span>
+                                    </div>
+                                </td>
+                                <td class="td-email">krishna@financepro.in</td>
+                                <td><span class="badge role-finance">Finance</span></td>
+                                <td><span class="badge status-active">Active</span></td>
+                                <td class="td-amount">—</td>
+                                <td>Jan 8</td>
+                                <td class="td-actions-admin">
+                                    <button class="btn-icon-action view" aria-label="View user">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
+                                                stroke="currentColor" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar red">SK</div>
+                                        <span class="table-user-name">Shravani Kotawar</span>
+                                    </div>
+                                </td>
+                                <td class="td-email">shravani@wipro.com</td>
+                                <td><span class="badge role-business">Business</span></td>
+                                <td><span class="badge status-suspended">Suspended</span></td>
+                                <td class="td-amount">3</td>
+                                <td>Jan 12</td>
+                                <td class="td-actions-admin">
+                                    <button class="btn-icon-action view" aria-label="View user">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
+                                                stroke="currentColor" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-restore" aria-label="Restore user">Restore</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar amber">CR</div>
+                                        <span class="table-user-name">Chaitanya Ranade</span>
+                                    </div>
+                                </td>
+                                <td class="td-email">chaitanya@hdfc.com</td>
+                                <td><span class="badge role-business">Business</span></td>
+                                <td><span class="badge status-active">Active</span></td>
+                                <td class="td-amount">7</td>
+                                <td>Jan 15</td>
+                                <td class="td-actions-admin">
+                                    <button class="btn-icon-action view" aria-label="View user">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
+                                                stroke="currentColor" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="table-avatar purple">RN</div>
+                                        <span class="table-user-name">Rohan Natekar</span>
+                                    </div>
+                                </td>
+                                <td class="td-email">rohan@capitalfund.in</td>
+                                <td><span class="badge role-finance">Finance</span></td>
+                                <td><span class="badge status-active">Active</span></td>
+                                <td class="td-amount">—</td>
+                                <td>Jan 18</td>
+                                <td class="td-actions-admin">
+                                    <button class="btn-icon-action view" aria-label="View user">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
+                                                stroke="currentColor" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══ TAB 2 — ANALYTICS ═══ -->
+            <div class="tab-panel" id="tabAnalytics" style="display:none;">
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-card-top">
+                            <span class="analytics-label">Invoice Volume by Month</span>
+                            <span class="badge risk-low" style="font-size:10px;">↑ 18%</span>
+                        </div>
+                        <span class="analytics-value mono">₹3.2Cr</span>
+                        <div class="analytics-bar-track">
+                            <div class="analytics-bar-fill green" style="width:78%"></div>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-top">
+                            <span class="analytics-label">Average Risk Score</span>
+                            <span class="badge risk-low" style="font-size:10px;">↑ 5pts</span>
+                        </div>
+                        <span class="analytics-value mono">72<span class="analytics-sub">/100</span></span>
+                        <div class="analytics-bar-track">
+                            <div class="analytics-bar-fill blue" style="width:72%"></div>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-top">
+                            <span class="analytics-label">Time to Fund</span>
+                            <span class="badge risk-low" style="font-size:10px;">↓ 4hrs</span>
+                        </div>
+                        <span class="analytics-value mono">36<span class="analytics-sub">hrs</span></span>
+                        <div class="analytics-bar-track">
+                            <div class="analytics-bar-fill amber" style="width:45%"></div>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-top">
+                            <span class="analytics-label">Finance Partner ROI</span>
+                            <span class="badge risk-low" style="font-size:10px;">↑ 0.2%</span>
+                        </div>
+                        <span class="analytics-value mono">3.4<span class="analytics-sub">%</span></span>
+                        <div class="analytics-bar-track">
+                            <div class="analytics-bar-fill purple" style="width:68%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB 3 — SYSTEM HEALTH ═══ -->
+            <div class="tab-panel" id="tabHealth" style="display:none;">
+                <div class="health-grid">
+                    <div class="health-card healthy">
+                        <div class="health-card-header">
+                            <span class="health-dot green"></span>
+                            <span class="health-status">Healthy</span>
+                        </div>
+                        <h3 class="health-name">API Gateway</h3>
+                        <span class="health-detail mono">99.98% uptime</span>
+                    </div>
+                    <div class="health-card healthy">
+                        <div class="health-card-header">
+                            <span class="health-dot green"></span>
+                            <span class="health-status">Healthy</span>
+                        </div>
+                        <h3 class="health-name">Database</h3>
+                        <span class="health-detail mono">PostgreSQL 15.2</span>
+                    </div>
+                    <div class="health-card healthy">
+                        <div class="health-card-header">
+                            <span class="health-dot green"></span>
+                            <span class="health-status">Healthy</span>
+                        </div>
+                        <h3 class="health-name">AI Engine</h3>
+                        <span class="health-detail mono">v2.3.1</span>
+                    </div>
+                    <div class="health-card warning">
+                        <div class="health-card-header">
+                            <span class="health-dot amber"></span>
+                            <span class="health-status warn">Warning</span>
+                        </div>
+                        <h3 class="health-name">Queue Worker</h3>
+                        <span class="health-detail mono">High latency</span>
+                    </div>
+                    <div class="health-card healthy">
+                        <div class="health-card-header">
+                            <span class="health-dot green"></span>
+                            <span class="health-status">Healthy</span>
+                        </div>
+                        <h3 class="health-name">Storage</h3>
+                        <span class="health-detail mono">S3 nominal</span>
+                    </div>
+                    <div class="health-card healthy">
+                        <div class="health-card-header">
+                            <span class="health-dot green"></span>
+                            <span class="health-status">Healthy</span>
+                        </div>
+                        <h3 class="health-name">Email Service</h3>
+                        <span class="health-detail mono">SendGrid OK</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <script src="admin.js"></script>
+</body>
+
+</html>
