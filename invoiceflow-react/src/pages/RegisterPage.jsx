@@ -1,23 +1,54 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/auth.css';
 
 export default function RegisterPage() {
     const [step, setStep] = useState(1);
-    const [role, setRole] = useState('');
+    const [role, setRole] = useState('business');
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [businessData, setBusinessData] = useState({ company: '', gstin: '', industry: '' });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
+    const { register } = useAuth();
 
     function handleStep1(e) {
         e.preventDefault();
+        setError('');
+        if (formData.password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
         setStep(2);
     }
 
-    function handleStep2(e) {
+    async function handleStep2(e) {
         e.preventDefault();
-        localStorage.setItem('invoiceflow_user', formData.name);
-        setStep(3);
+        setError('');
+        setLoading(true);
+
+        try {
+            await register({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                role,
+                company: businessData.company,
+                gstNumber: businessData.gstin,
+                industry: businessData.industry
+            });
+            setStep(3);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function goToDashboard() {
+        const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
+        navigate(roleRoutes[role] || '/dashboard');
     }
 
     return (
@@ -51,6 +82,16 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
+                    {error && (
+                        <div style={{
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                            borderRadius: '8px', padding: '10px 14px', marginBottom: '16px',
+                            color: '#EF4444', fontSize: '13px'
+                        }}>
+                            {error}
+                        </div>
+                    )}
+
                     {/* Step 1 */}
                     {step === 1 && (
                         <div className="register-step">
@@ -81,7 +122,7 @@ export default function RegisterPage() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label" htmlFor="regPassword">Password</label>
-                                    <input type="password" className="form-input" id="regPassword" placeholder="Create a strong password" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <input type="password" className="form-input" id="regPassword" placeholder="Min 8 characters" required minLength={8} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
                                 <button type="submit" className="btn-auth-primary">Continue</button>
                             </form>
@@ -110,7 +151,9 @@ export default function RegisterPage() {
                                     <label className="form-label" htmlFor="industry">Industry</label>
                                     <input type="text" className="form-input" id="industry" placeholder="e.g. Manufacturing" required value={businessData.industry} onChange={e => setBusinessData({ ...businessData, industry: e.target.value })} />
                                 </div>
-                                <button type="submit" className="btn-auth-primary">Create Account</button>
+                                <button type="submit" className="btn-auth-primary" disabled={loading}>
+                                    {loading ? 'Creating Account…' : 'Create Account'}
+                                </button>
                             </form>
                         </div>
                     )}
@@ -121,7 +164,7 @@ export default function RegisterPage() {
                             <div className="success-icon">🎉</div>
                             <h1 className="auth-heading">You're all set!</h1>
                             <p className="auth-subtext">Your account has been created successfully.</p>
-                            <button className="btn-auth-primary" onClick={() => navigate('/dashboard')}>Go to Dashboard</button>
+                            <button className="btn-auth-primary" onClick={goToDashboard}>Go to Dashboard</button>
                         </div>
                     )}
                 </div>

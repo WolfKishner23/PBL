@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { invoiceAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import '../styles/dashboard.css';
 import '../styles/upload.css';
 
 export default function UploadPage() {
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [file, setFile] = useState(null);
     const [dragOver, setDragOver] = useState(false);
@@ -12,7 +14,21 @@ export default function UploadPage() {
     const [extracting, setExtracting] = useState(false);
     const [showRisk, setShowRisk] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [showToast, setShowToast] = useState(false);
+    const [error, setError] = useState('');
+    const [createdInvoice, setCreatedInvoice] = useState(null);
+    const [riskResult, setRiskResult] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Form fields
+    const [formData, setFormData] = useState({
+        amount: '',
+        debtorCompany: '',
+        debtorGST: '',
+        dueDate: '',
+        paymentTerms: 'Net 30',
+        description: ''
+    });
 
     function handleFile(f) {
         if (!f) return;
@@ -29,19 +45,60 @@ export default function UploadPage() {
         if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     }
 
-    function handleExtract() {
+    async function handleExtract() {
         setExtracting(true);
+        setError('');
         setCurrentStep(2);
-        setTimeout(() => {
+
+        try {
+            // Step 1: Create invoice in backend
+            const res = await invoiceAPI.create({
+                amount: parseFloat(formData.amount) || 350000,
+                debtorCompany: formData.debtorCompany || 'Unknown Company',
+                debtorGST: formData.debtorGST,
+                dueDate: formData.dueDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                paymentTerms: formData.paymentTerms,
+                description: formData.description
+            });
+
+            const invoice = res.data.invoice;
+            setCreatedInvoice(invoice);
+
+            // Step 2: Upload PDF if file exists
+            if (file) {
+                const pdfData = new FormData();
+                pdfData.append('pdf', file);
+                await invoiceAPI.uploadPDF(invoice.id, pdfData);
+            }
+
             setExtracting(false);
             setCurrentStep(3);
             setShowRisk(true);
-        }, 1800);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to create invoice');
+            setExtracting(false);
+            setCurrentStep(1);
+        }
     }
 
-    function handleSubmit() {
-        setSubmitted(true);
-        setCurrentStep(4);
+    async function handleSubmit() {
+        if (!createdInvoice) return;
+        setError('');
+
+        try {
+            // Submit invoice → triggers AI risk scoring
+            const res = await invoiceAPI.submit(createdInvoice.id);
+            setRiskResult(res.data.riskResult);
+            setSubmitted(true);
+            setCurrentStep(4);
+            setShowToast(true);
+            setTimeout(() => {
+                setShowToast(false);
+                navigate('/dashboard');
+            }, 3000);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to submit invoice');
+        }
     }
 
     function handleBack() {
@@ -54,6 +111,8 @@ export default function UploadPage() {
         setShowRisk(false);
         setCurrentStep(1);
         setSubmitted(false);
+        setCreatedInvoice(null);
+        setRiskResult(null);
     }
 
     function formatSize(bytes) {
@@ -66,8 +125,31 @@ export default function UploadPage() {
     const stepActive = (s) => currentStep === s;
     const lineCompleted = (afterStep) => currentStep > afterStep;
 
+    // Risk display helpers
+    const riskScore = riskResult?.riskScore || createdInvoice?.riskScore || null;
+    const riskLevel = riskResult?.riskLevel || createdInvoice?.riskLevel || 'medium';
+    const riskDetails = riskResult?.details || {};
+    const recommendation = riskResult?.recommendation || 'Invoice is being reviewed.';
+    const riskBadgeClass = riskLevel === 'low' ? 'risk-low' : riskLevel === 'high' ? 'risk-high' : 'risk-medium';
+
     return (
         <>
+            {/* ─── SUCCESS TOAST NOTIFICATION ─── */}
+            {showToast && (
+                <div className="toast-notification toast-success">
+                    <div className="toast-icon">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <circle cx="10" cy="10" r="9" stroke="#22C55E" strokeWidth="2" />
+                            <path d="M6 10l3 3 5-6" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </div>
+                    <div className="toast-content">
+                        <span className="toast-title">Invoice Submitted Successfully!</span>
+                        <span className="toast-message">{riskResult?.riskLevel ? `Risk: ${riskLevel.toUpperCase()} (Score: ${riskScore}/100)` : 'Redirecting to dashboard…'}</span>
+                    </div>
+                    <button className="toast-close" onClick={() => setShowToast(false)}>✕</button>
+                </div>
+            )}
             <Sidebar variant="business" activeSection="upload" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <main className="main">
 
@@ -121,6 +203,16 @@ export default function UploadPage() {
                     </div>
                 </div>
 
+                {error && (
+                    <div style={{
+                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                        borderRadius: '8px', padding: '10px 14px', margin: '0 0 16px',
+                        color: '#EF4444', fontSize: '13px'
+                    }}>
+                        {error}
+                    </div>
+                )}
+
                 {/* ─── CONTENT 2-COL ─── */}
                 <div className="upload-layout">
 
@@ -173,7 +265,7 @@ export default function UploadPage() {
                                         <button className="uploaded-replace" onClick={handleReplace}>Click to replace</button>
                                     </div>
                                     <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk}>
-                                        {extracting ? 'Extracting fields…' : showRisk ? 'Fields Extracted ✓' : 'Extract Fields with AI'}
+                                        {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract'}
                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                     </button>
                                 </div>
@@ -186,35 +278,37 @@ export default function UploadPage() {
                                 <div className="card-header">
                                     <div>
                                         <h2 className="card-title">AI Risk Assessment</h2>
-                                        <p className="card-subtitle">Computed in 1.2 seconds</p>
+                                        <p className="card-subtitle">{riskScore ? `Score: ${riskScore}/100` : 'Submit to get AI risk score'}</p>
                                     </div>
-                                    <span className="badge risk-low" style={{ fontSize: '12px', padding: '4px 12px' }}>Low Risk</span>
+                                    <span className={`badge ${riskBadgeClass}`} style={{ fontSize: '12px', padding: '4px 12px' }}>
+                                        {riskScore ? `${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk` : 'Pending'}
+                                    </span>
                                 </div>
 
                                 {/* 2×2 metrics */}
                                 <div className="risk-metrics">
-                                    <div className="risk-metric-card green">
+                                    <div className={`risk-metric-card ${riskScore && riskScore >= 60 ? 'green' : 'amber'}`}>
                                         <span className="metric-label">Overall Score</span>
-                                        <span className="metric-value mono">78<span className="metric-suffix">/100</span></span>
+                                        <span className="metric-value mono">{riskScore || '—'}<span className="metric-suffix">/100</span></span>
                                     </div>
-                                    <div className="risk-metric-card green">
+                                    <div className={`risk-metric-card ${riskDetails.paymentHistory >= 70 ? 'green' : 'amber'}`}>
                                         <span className="metric-label">Pay History</span>
-                                        <span className="metric-value">Excellent <span className="metric-check">✓</span></span>
+                                        <span className="metric-value">{riskDetails.paymentHistory ? `${riskDetails.paymentHistory}` : '—'} <span className="metric-check">{riskDetails.paymentHistory >= 70 ? '✓' : '~'}</span></span>
                                     </div>
-                                    <div className="risk-metric-card green">
+                                    <div className={`risk-metric-card ${riskDetails.debtorCredit >= 80 ? 'green' : 'amber'}`}>
                                         <span className="metric-label">Debtor Credit</span>
-                                        <span className="metric-value">A+ Rating <span className="metric-check">✓</span></span>
+                                        <span className="metric-value">{riskDetails.debtorCredit ? `${riskDetails.debtorCredit}` : '—'} <span className="metric-check">{riskDetails.debtorCredit >= 80 ? '✓' : '~'}</span></span>
                                     </div>
-                                    <div className="risk-metric-card amber">
+                                    <div className={`risk-metric-card ${riskDetails.industryRisk >= 70 ? 'green' : 'amber'}`}>
                                         <span className="metric-label">Industry Risk</span>
-                                        <span className="metric-value">Moderate <span className="metric-tilde">~</span></span>
+                                        <span className="metric-value">{riskDetails.industryRisk ? `${riskDetails.industryRisk}` : '—'} <span className="metric-tilde">{riskDetails.industryRisk >= 70 ? '✓' : '~'}</span></span>
                                     </div>
                                 </div>
 
                                 {/* Risk Meter */}
                                 <div className="risk-meter-section">
                                     <div className="risk-meter-bar">
-                                        <div className="risk-marker" style={{ left: '25%' }}></div>
+                                        <div className="risk-marker" style={{ left: riskScore ? `${100 - riskScore}%` : '50%' }}></div>
                                     </div>
                                     <div className="risk-meter-labels">
                                         <span>LOW</span>
@@ -225,10 +319,10 @@ export default function UploadPage() {
 
                                 {/* Recommendation */}
                                 <div className="recommendation-box">
-                                    <span className="recommendation-icon">✓</span>
+                                    <span className="recommendation-icon">{riskLevel === 'low' ? '✓' : riskLevel === 'high' ? '⚠' : 'ℹ'}</span>
                                     <div>
-                                        <strong>Recommended for Funding</strong>
-                                        <p>This invoice has a low risk profile. Finance partners will approve quickly.</p>
+                                        <strong>{riskLevel === 'low' ? 'Recommended for Funding' : riskLevel === 'high' ? 'Manual Review Needed' : 'Moderate Risk'}</strong>
+                                        <p>{recommendation}</p>
                                     </div>
                                 </div>
 
@@ -250,34 +344,59 @@ export default function UploadPage() {
                     {/* ═══ RIGHT COLUMN ═══ */}
                     <div className="upload-right">
 
-                        {/* Invoice Preview */}
+                        {/* Invoice Preview / Form */}
                         <div className="card preview-card">
                             <div className="card-header">
-                                <h2 className="card-title">Invoice Preview</h2>
+                                <h2 className="card-title">{createdInvoice ? 'Invoice Created' : 'Invoice Details'}</h2>
                             </div>
 
-                            {!file ? (
-                                <div className="preview-placeholder">
-                                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                        <rect x="6" y="4" width="28" height="32" rx="4" stroke="#334155" strokeWidth="1.5" strokeDasharray="4 3" />
-                                        <path d="M14 16h12M14 22h8M14 28h10" stroke="#334155" strokeWidth="1.3" strokeLinecap="round" />
-                                    </svg>
-                                    <p>Upload a file to see preview</p>
-                                </div>
-                            ) : (
+                            {createdInvoice ? (
                                 <div className="preview-fields">
                                     {[
-                                        { label: 'Invoice #', value: 'INV-2024-009' },
-                                        { label: 'Amount', value: '₹3,50,000' },
-                                        { label: 'Debtor', value: 'Tata Steel Ltd' },
-                                        { label: 'Due Date', value: 'Mar 25, 2024' },
-                                        { label: 'Terms', value: 'Net 60' },
+                                        { label: 'Invoice #', value: createdInvoice.invoiceNumber },
+                                        { label: 'Amount', value: `₹${parseFloat(createdInvoice.amount).toLocaleString('en-IN')}` },
+                                        { label: 'Debtor', value: createdInvoice.debtorCompany },
+                                        { label: 'Due Date', value: new Date(createdInvoice.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) },
+                                        { label: 'Terms', value: createdInvoice.paymentTerms || 'N/A' },
+                                        { label: 'Status', value: createdInvoice.status?.toUpperCase() || 'DRAFT' },
                                     ].map((row, i) => (
                                         <div className="preview-row" key={i}>
                                             <span className="preview-label">{row.label}</span>
                                             <span className="preview-value">{row.value}</span>
                                         </div>
                                     ))}
+                                </div>
+                            ) : (
+                                <div className="preview-fields" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 4px' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Amount (₹)</label>
+                                        <input type="number" className="form-input" placeholder="350000" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Debtor Company</label>
+                                        <input type="text" className="form-input" placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => setFormData({ ...formData, debtorCompany: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>GST Number</label>
+                                        <input type="text" className="form-input" placeholder="27AATCS1286K1ZP" value={formData.debtorGST} onChange={e => setFormData({ ...formData, debtorGST: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Due Date</label>
+                                        <input type="date" className="form-input" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Payment Terms</label>
+                                        <select className="form-input" value={formData.paymentTerms} onChange={e => setFormData({ ...formData, paymentTerms: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}>
+                                            <option value="Net 30">Net 30</option>
+                                            <option value="Net 45">Net 45</option>
+                                            <option value="Net 60">Net 60</option>
+                                            <option value="Net 90">Net 90</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Description</label>
+                                        <input type="text" className="form-input" placeholder="Steel supply invoice" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -289,10 +408,11 @@ export default function UploadPage() {
                             </div>
                             <div className="scoring-factors">
                                 {[
-                                    { name: 'Debtor credit history', pct: '40%', width: '80%' },
-                                    { name: 'Payment track record', pct: '30%', width: '60%' },
+                                    { name: 'Debtor credit history', pct: '35%', width: '70%' },
+                                    { name: 'Payment track record', pct: '25%', width: '50%' },
                                     { name: 'Industry risk index', pct: '20%', width: '40%' },
-                                    { name: 'Invoice authenticity', pct: '10%', width: '20%' },
+                                    { name: 'Invoice validity', pct: '10%', width: '20%' },
+                                    { name: 'Days to maturity', pct: '10%', width: '20%' },
                                 ].map((f, i) => (
                                     <div className="factor" key={i}>
                                         <div className="factor-top">

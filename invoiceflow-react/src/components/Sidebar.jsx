@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
     { to: '/dashboard', icon: 'grid', label: 'Dashboard', section: 'dashboard' },
@@ -69,15 +70,28 @@ const icons = {
             <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" strokeWidth="1.3" />
         </svg>
     ),
+    logout: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M14 13l3-3-3-3M8 10h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    ),
 };
 
 export default function Sidebar({ variant = 'business', activeSection, isOpen, onClose }) {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const items = variant === 'finance' ? financeNavItems : variant === 'admin' ? adminNavItems : navItems;
 
-    const userName = localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'Arjun Mehta');
+    const userName = user?.name || localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'User');
     const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const userRole = variant === 'finance' ? 'Finance Partner' : variant === 'admin' ? 'System Admin' : 'Business Owner';
+    const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner';
+
+    function handleLogout() {
+        logout();
+        navigate('/login');
+    }
 
     return (
         <>
@@ -107,6 +121,15 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
                                 </Link>
                             );
                         })}
+                        {/* Logout button */}
+                        <button
+                            className="nav-item"
+                            onClick={handleLogout}
+                            style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: '8px', color: '#EF4444' }}
+                        >
+                            {icons.logout}
+                            Logout
+                        </button>
                     </nav>
                 </div>
                 <div className="sidebar-bottom">

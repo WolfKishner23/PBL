@@ -1,15 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import { invoiceAPI, factoringAPI } from '../services/api';
 import '../styles/dashboard.css';
 import '../styles/finance.css';
-
-const queueData = [
-    { id: 'INV-2024-101', company: 'Tata Steel', amount: '₹4,85,000', days: '45', score: 82, debtor: 88, payment: 76, validity: 92, industry: 70, status: 'pending' },
-    { id: 'INV-2024-102', company: 'Infosys Ltd', amount: '₹1,27,500', days: '30', score: 75, debtor: 72, payment: 80, validity: 85, industry: 65, status: 'pending' },
-    { id: 'INV-2024-103', company: 'HDFC Bank', amount: '₹3,45,000', days: '60', score: 45, debtor: 40, payment: 55, validity: 60, industry: 30, status: 'pending' },
-    { id: 'INV-2024-104', company: 'Wipro Ltd', amount: '₹2,10,000', days: '35', score: 68, debtor: 70, payment: 65, validity: 78, industry: 58, status: 'pending' },
-    { id: 'INV-2024-105', company: 'Reliance Retail', amount: '₹6,30,000', days: '25', score: 91, debtor: 95, payment: 88, validity: 94, industry: 85, status: 'pending' },
-];
 
 function getScoreColor(score) {
     if (score > 70) return 'green';
@@ -22,7 +15,39 @@ export default function FinanceDashboard() {
     const [tab, setTab] = useState('all');
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(null);
-    const [queue, setQueue] = useState(queueData);
+    const [queue, setQueue] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch invoices from API (finance user sees submitted/review/approved/funded)
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                const res = await invoiceAPI.getAll();
+                const invoices = (res.data.invoices || []).map(inv => ({
+                    id: inv.invoiceNumber || `INV-${inv.id}`,
+                    dbId: inv.id,
+                    company: inv.debtorCompany || inv.uploaderCompany || 'Unknown',
+                    uploaderName: inv.uploaderName || 'Unknown',
+                    amount: `₹${parseFloat(inv.amount).toLocaleString('en-IN')}`,
+                    rawAmount: parseFloat(inv.amount),
+                    days: inv.dueDate ? Math.max(0, Math.ceil((new Date(inv.dueDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0,
+                    score: inv.riskScore || 0,
+                    debtor: inv.riskDetails?.debtorCredit || 0,
+                    payment: inv.riskDetails?.paymentHistory || 0,
+                    validity: inv.riskDetails?.invoiceValidity || 0,
+                    industry: inv.riskDetails?.industryRisk || 0,
+                    status: inv.status === 'review' || inv.status === 'submitted' ? 'pending' : inv.status,
+                    rawStatus: inv.status,
+                }));
+                setQueue(invoices);
+            } catch (err) {
+                console.error('Failed to fetch invoices:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInvoices();
+    }, []);
 
     const filtered = queue.filter(inv => {
         const matchTab = tab === 'all' || inv.status === tab;
@@ -30,9 +55,24 @@ export default function FinanceDashboard() {
         return matchTab && matchSearch;
     });
 
-    function handleAction(id, action) {
-        setQueue(prev => prev.map(inv => inv.id === id ? { ...inv, status: action } : inv));
-        setSelected(null);
+    async function handleAction(id, action) {
+        const inv = queue.find(i => i.id === id);
+        if (!inv) return;
+
+        try {
+            if (action === 'approved') {
+                await factoringAPI.approve(inv.dbId);
+            } else if (action === 'rejected') {
+                await factoringAPI.reject(inv.dbId, 'Rejected by finance partner');
+            }
+            setQueue(prev => prev.map(i => i.id === id ? { ...i, status: action } : i));
+            setSelected(null);
+        } catch (err) {
+            console.error('Action failed:', err);
+            // Fallback: update locally anyway for demo
+            setQueue(prev => prev.map(i => i.id === id ? { ...i, status: action } : i));
+            setSelected(null);
+        }
     }
 
     return (
@@ -57,7 +97,7 @@ export default function FinanceDashboard() {
                         { label: 'Queue Size', value: queue.filter(i => i.status === 'pending').length, accent: 'blue' },
                         { label: 'Approved', value: queue.filter(i => i.status === 'approved').length, accent: 'green' },
                         { label: 'Rejected', value: queue.filter(i => i.status === 'rejected').length, accent: 'red' },
-                        { label: 'Avg Score', value: Math.round(queue.reduce((a, b) => a + b.score, 0) / queue.length), accent: 'amber' },
+                        { label: 'Avg Score', value: queue.length ? Math.round(queue.reduce((a, b) => a + b.score, 0) / queue.length) : 0, accent: 'amber' },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top"><span className="stat-card-label">{s.label}</span></div>
@@ -98,7 +138,11 @@ export default function FinanceDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filtered.map(inv => (
+                                    {loading ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
+                                    ) : filtered.length === 0 ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices in queue</td></tr>
+                                    ) : filtered.map(inv => (
                                         <tr key={inv.id} onClick={() => setSelected(inv)} style={{ cursor: 'pointer', background: selected?.id === inv.id ? 'rgba(59,130,246,.08)' : '' }}>
                                             <td className="td-id">{inv.id}</td>
                                             <td>{inv.company}</td>

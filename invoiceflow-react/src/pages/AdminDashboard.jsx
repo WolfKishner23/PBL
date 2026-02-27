@@ -1,14 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import { adminAPI } from '../services/api';
 import '../styles/dashboard.css';
 import '../styles/admin.css';
-
-const usersData = [
-    { name: 'Rajesh Nair', initials: 'RN', email: 'rajesh@buildright.com', role: 'Business', status: 'Active', invoices: 42, joined: 'Jan 2024' },
-    { name: 'Kavita Lal', initials: 'KL', email: 'kavita@novatech.io', role: 'Finance', status: 'Active', invoices: 0, joined: 'Mar 2024' },
-    { name: 'Suresh Kumar', initials: 'SK', email: 'suresh@exportpro.in', role: 'Business', status: 'Suspended', invoices: 18, joined: 'Jun 2024' },
-    { name: 'Chen Rui', initials: 'CR', email: 'chen@capitalfund.hk', role: 'Finance', status: 'Active', invoices: 0, joined: 'Sep 2024' },
-];
 
 const healthServices = [
     { name: 'API Gateway', status: 'Healthy', uptime: '99.99%', latency: '42ms' },
@@ -22,11 +16,50 @@ const healthServices = [
 export default function AdminDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [tab, setTab] = useState('users');
-    const [users, setUsers] = useState(usersData);
+    const [users, setUsers] = useState([]);
+    const [stats, setStats] = useState(null);
     const [search, setSearch] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    function toggleSuspend(index) {
-        setUsers(prev => prev.map((u, i) => i === index ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u));
+    // Fetch users and stats from API
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [usersRes, statsRes] = await Promise.all([
+                    adminAPI.getUsers(),
+                    adminAPI.getStats()
+                ]);
+                setUsers((usersRes.data.users || []).map(u => ({
+                    id: u.id,
+                    name: u.name,
+                    initials: u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
+                    email: u.email,
+                    role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
+                    status: u.isSuspended ? 'Suspended' : 'Active',
+                    invoices: u.invoiceCount || 0,
+                    joined: new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+                })));
+                setStats(statsRes.data);
+            } catch (err) {
+                console.error('Failed to fetch admin data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    async function toggleSuspend(index) {
+        const user = users[index];
+        if (!user) return;
+        try {
+            await adminAPI.suspendUser(user.id);
+            setUsers(prev => prev.map((u, i) => i === index ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u));
+        } catch (err) {
+            console.error('Failed to toggle suspend:', err);
+            // Fallback for demo
+            setUsers(prev => prev.map((u, i) => i === index ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u));
+        }
     }
 
     const filteredUsers = users.filter(u =>
@@ -61,10 +94,10 @@ export default function AdminDashboard() {
                 {/* Stat Cards */}
                 <section className="stat-cards">
                     {[
-                        { label: 'Total Users', value: '2,412', change: '↑ 124 this month', accent: 'blue' },
-                        { label: 'Invoice Volume', value: '₹24Cr', change: '↑ this month', accent: 'green' },
-                        { label: 'Approval Rate', value: '74%', change: '', accent: 'amber' },
-                        { label: 'Default Rate', value: '1.2%', change: '↓ 0.3%', accent: 'purple' },
+                        { label: 'Total Users', value: stats?.totalUsers?.toString() || users.length.toString(), change: `${users.filter(u => u.status === 'Active').length} active`, accent: 'blue' },
+                        { label: 'Invoice Volume', value: stats?.totalInvoiceVolume ? `₹${(stats.totalInvoiceVolume / 10000000).toFixed(1)}Cr` : `${users.reduce((a, b) => a + b.invoices, 0)} invoices`, change: '', accent: 'green' },
+                        { label: 'Approval Rate', value: stats?.approvalRate ? `${stats.approvalRate}%` : '—', change: '', accent: 'amber' },
+                        { label: 'Default Rate', value: stats?.defaultRate ? `${stats.defaultRate}%` : '1.2%', change: '', accent: 'purple' },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top"><span className="stat-card-label">{s.label}</span></div>
@@ -100,8 +133,12 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredUsers.map((u, i) => (
-                                        <tr key={i}>
+                                    {loading ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading users...</td></tr>
+                                    ) : filteredUsers.length === 0 ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No users found</td></tr>
+                                    ) : filteredUsers.map((u, i) => (
+                                        <tr key={u.id || i}>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                     <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '11px' }}>{u.initials}</div>

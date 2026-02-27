@@ -1,24 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { invoiceAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import '../styles/dashboard.css';
-
-const invoices = [
-    { id: 'INV-2024-001', company: 'Tata Steel', amount: '₹4,85,000', due: 'Mar 15', risk: 'Low', riskClass: 'risk-low', status: 'Funded', statusClass: 'status-funded' },
-    { id: 'INV-2024-002', company: 'Infosys Ltd', amount: '₹1,27,500', due: 'Feb 28', risk: 'Low', riskClass: 'risk-low', status: 'Approved', statusClass: 'status-approved' },
-    { id: 'INV-2024-003', company: 'Wipro Ltd', amount: '₹2,10,000', due: 'Mar 05', risk: 'Medium', riskClass: 'risk-medium', status: 'Under Review', statusClass: 'status-review' },
-    { id: 'INV-2024-004', company: 'Reliance Retail', amount: '₹6,30,000', due: 'Apr 01', risk: 'Low', riskClass: 'risk-low', status: 'Under Review', statusClass: 'status-review' },
-    { id: 'INV-2024-005', company: 'HDFC Bank', amount: '₹3,45,000', due: 'Mar 22', risk: 'High', riskClass: 'risk-high', status: 'Rejected', statusClass: 'status-rejected' },
-    { id: 'INV-2024-006', company: 'Bajaj Finance', amount: '₹1,80,000', due: 'Mar 10', risk: 'Medium', riskClass: 'risk-medium', status: 'Funded', statusClass: 'status-funded' },
-];
-
-const notifications = [
-    { icon: '✅', msg: <><strong>INV-2024-001</strong> approved by FinancePro</>, time: '5 hours ago' },
-    { icon: '💸', msg: <><strong>INV-2024-002</strong> funded — ₹1,27,500 credited</>, time: '2 hours ago' },
-    { icon: '❌', msg: <><strong>INV-2024-006</strong> rejected — high risk score</>, time: '1 day ago' },
-    { icon: '✅', msg: <><strong>INV-2024-003</strong> approved by CapitalFund</>, time: '2 days ago' },
-    { icon: '❌', msg: <><strong>INV-2024-005</strong> rejected — debtor low credit</>, time: '3 days ago' },
-];
 
 export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,14 +12,31 @@ export default function Dashboard() {
     const [notifOpen, setNotifOpen] = useState(false);
     const [notifCleared, setNotifCleared] = useState(false);
     const [dateStr, setDateStr] = useState('');
+    const [invoices, setInvoices] = useState([]);
+    const [loadingData, setLoadingData] = useState(true);
     const notifRef = useRef(null);
     const chartRef = useRef(null);
     const tooltipRef = useRef(null);
 
-    const userName = localStorage.getItem('invoiceflow_user') || 'Arjun';
-    const firstName = userName.split(' ')[0];
+    const { user } = useAuth();
+    const firstName = user ? user.name.split(' ')[0] : 'User';
     const h = new Date().getHours();
     const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+
+    // Fetch invoices from API
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                const res = await invoiceAPI.getAll();
+                setInvoices(res.data.invoices || []);
+            } catch (err) {
+                console.error('Failed to fetch invoices:', err);
+            } finally {
+                setLoadingData(false);
+            }
+        };
+        fetchInvoices();
+    }, []);
 
     useEffect(() => {
         function updateDate() {
@@ -104,7 +106,6 @@ export default function Dashboard() {
             const chartW = W - padL - padR;
             const chartH = H - padT - padB;
 
-            // Grid lines + Y labels
             const steps = 4;
             ctx.font = '11px JetBrains Mono, monospace';
             ctx.textAlign = 'right';
@@ -122,7 +123,6 @@ export default function Dashboard() {
                 ctx.fillText(val === 0 ? '₹0' : '₹' + val.toFixed(0) + 'L', padL - 8, y);
             }
 
-            // Bars
             const groupW = chartW / months.length;
             const barW = Math.min(groupW * 0.28, 28);
             const gap = Math.min(barW * 0.2, 5);
@@ -131,21 +131,18 @@ export default function Dashboard() {
 
             months.forEach((m, i) => {
                 const x = padL + i * groupW + groupW / 2;
-                // Inflow bar
                 const ih = (inflow[i] / maxVal) * chartH * progress;
                 const ix = x - barW - gap / 2;
                 const iy = padT + chartH - ih;
                 roundedRect(ctx, ix, iy, barW, ih, 4);
                 ctx.fillStyle = BLUE;
                 ctx.fill();
-                // Outflow bar
                 const oh = (outflow[i] / maxVal) * chartH * progress;
                 const ox = x + gap / 2;
                 const oy = padT + chartH - oh;
                 roundedRect(ctx, ox, oy, barW, oh, 4);
                 ctx.fillStyle = GREY;
                 ctx.fill();
-                // Month label
                 ctx.fillStyle = LABEL;
                 ctx.font = '11px Sora, sans-serif';
                 ctx.fillText(m, x, padT + chartH + 12);
@@ -153,25 +150,21 @@ export default function Dashboard() {
         }
 
         resize();
-
-        // Animate
         let animStart = null;
         const animDuration = 900;
         function animate(ts) {
             if (!animStart) animStart = ts;
             const elapsed = ts - animStart;
             let t = Math.min(elapsed / animDuration, 1);
-            t = 1 - Math.pow(1 - t, 3); // ease-out cubic
+            t = 1 - Math.pow(1 - t, 3);
             drawChart(t);
             if (t < 1) requestAnimationFrame(animate);
         }
         requestAnimationFrame(animate);
 
-        // Resize observer
         const ro = new ResizeObserver(() => { resize(); drawChart(1); });
         ro.observe(canvas.parentElement);
 
-        // Tooltip
         let tooltip = tooltipRef.current;
         if (!tooltip) {
             tooltip = document.createElement('div');
@@ -213,9 +206,42 @@ export default function Dashboard() {
         };
     }, []);
 
+    // Helper functions
+    const formatAmount = (amount) => {
+        const num = parseFloat(amount);
+        return '₹' + num.toLocaleString('en-IN');
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    };
+
+    const getRiskClass = (level) => {
+        if (!level) return 'risk-medium';
+        return `risk-${level}`;
+    };
+
+    const getStatusClass = (status) => {
+        const map = { draft: 'status-review', submitted: 'status-review', review: 'status-review', approved: 'status-approved', funded: 'status-funded', rejected: 'status-rejected' };
+        return map[status] || 'status-review';
+    };
+
+    const getStatusLabel = (status) => {
+        const map = { draft: 'Draft', submitted: 'Submitted', review: 'Under Review', approved: 'Approved', funded: 'Funded', rejected: 'Rejected' };
+        return map[status] || status;
+    };
+
+    // Stats
+    const totalInvoices = invoices.length;
+    const totalFunded = invoices.filter(i => i.status === 'funded').reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+    const avgRisk = invoices.filter(i => i.riskScore).reduce((sum, i, _, arr) => sum + i.riskScore / arr.length, 0);
+    const pendingReview = invoices.filter(i => ['submitted', 'review'].includes(i.status)).length;
+
     const filteredInvoices = invoices.filter(inv => {
-        const matchesSearch = inv.company.toLowerCase().includes(search.toLowerCase()) || inv.id.toLowerCase().includes(search.toLowerCase());
-        const matchesFilter = filter === 'all' || inv.status === filter;
+        const matchesSearch = (inv.debtorCompany || '').toLowerCase().includes(search.toLowerCase()) || (inv.invoiceNumber || '').toLowerCase().includes(search.toLowerCase());
+        const matchesFilter = filter === 'all' || getStatusLabel(inv.status) === filter;
         return matchesSearch && matchesFilter;
     });
 
@@ -252,12 +278,12 @@ export default function Dashboard() {
                                     </div>
                                     {!notifCleared ? (
                                         <ul className="notif-list">
-                                            {notifications.map((n, i) => (
+                                            {invoices.slice(0, 5).map((inv, i) => (
                                                 <li className="notif-item" key={i}>
-                                                    <span className="notif-icon">{n.icon}</span>
+                                                    <span className="notif-icon">{inv.status === 'funded' ? '💸' : inv.status === 'approved' ? '✅' : inv.status === 'rejected' ? '❌' : '📄'}</span>
                                                     <div className="notif-body">
-                                                        <span className="notif-msg">{n.msg}</span>
-                                                        <span className="notif-time">{n.time}</span>
+                                                        <span className="notif-msg"><strong>{inv.invoiceNumber}</strong> — {getStatusLabel(inv.status)}</span>
+                                                        <span className="notif-time">{formatDate(inv.updatedAt)}</span>
                                                     </div>
                                                 </li>
                                             ))}
@@ -281,10 +307,10 @@ export default function Dashboard() {
                 {/* Stat Cards */}
                 <section className="stat-cards">
                     {[
-                        { label: 'Total Invoices', value: '24', change: '↑ 12%', accent: 'blue', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg> },
-                        { label: 'Amount Funded', value: '₹18.2L', change: '↑ ₹3.1L', accent: 'green', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 6l4-4 4 4M5 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> },
-                        { label: 'Avg. Risk Score', value: '72', change: 'Low Risk', accent: 'amber', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.5L10 14.7 5.1 17.2l.9-5.5-4-3.9 5.5-.8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg> },
-                        { label: 'Pending Review', value: '6', change: '2 urgent', accent: 'purple', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" /><path d="M10 6v5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg> },
+                        { label: 'Total Invoices', value: totalInvoices.toString(), change: `${invoices.filter(i => i.status === 'funded').length} funded`, accent: 'blue', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg> },
+                        { label: 'Amount Funded', value: totalFunded > 100000 ? `₹${(totalFunded / 100000).toFixed(1)}L` : formatAmount(totalFunded), change: `${invoices.filter(i => i.status === 'funded').length} invoices`, accent: 'green', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 6l4-4 4 4M5 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+                        { label: 'Avg. Risk Score', value: avgRisk ? Math.round(avgRisk).toString() : '—', change: avgRisk >= 70 ? 'Low Risk' : avgRisk >= 50 ? 'Medium' : avgRisk > 0 ? 'High Risk' : 'N/A', accent: 'amber', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.5L10 14.7 5.1 17.2l.9-5.5-4-3.9 5.5-.8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg> },
+                        { label: 'Pending Review', value: pendingReview.toString(), change: pendingReview > 0 ? `${pendingReview} awaiting` : 'All clear', accent: 'purple', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" /><path d="M10 6v5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg> },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top">
@@ -317,21 +343,18 @@ export default function Dashboard() {
                     <div className="card activity-card">
                         <div className="card-header"><h2 className="card-title">Recent Activity</h2></div>
                         <ul className="activity-list">
-                            {[
-                                { type: 'funded', emoji: '💸', desc: <><strong>INV-2024-002</strong> funded — <strong>₹1,27,500</strong></>, time: '2 hrs ago' },
-                                { type: 'approved', emoji: '✅', desc: <><strong>INV-2024-001</strong> approved by FinancePro</>, time: '5 hrs ago' },
-                                { type: 'ai', emoji: '🤖', desc: <>AI risk scored <strong>INV-2024-003</strong></>, time: '1 day ago' },
-                                { type: 'submitted', emoji: '📄', desc: <><strong>INV-2024-004</strong> submitted</>, time: '2 days ago' },
-                                { type: 'rejected', emoji: '❌', desc: <><strong>INV-2024-006</strong> rejected</>, time: '3 days ago' },
-                            ].map((a, i) => (
-                                <li className="activity-item" data-type={a.type} key={i}>
-                                    <div className={`activity-dot ${a.type}`}>{a.emoji}</div>
+                            {invoices.slice(0, 5).map((inv, i) => (
+                                <li className="activity-item" data-type={inv.status} key={i}>
+                                    <div className={`activity-dot ${inv.status}`}>{inv.status === 'funded' ? '💸' : inv.status === 'approved' ? '✅' : inv.status === 'rejected' ? '❌' : '📄'}</div>
                                     <div className="activity-text">
-                                        <span className="activity-desc">{a.desc}</span>
-                                        <span className="activity-time">{a.time}</span>
+                                        <span className="activity-desc"><strong>{inv.invoiceNumber}</strong> — {getStatusLabel(inv.status)} ({inv.debtorCompany})</span>
+                                        <span className="activity-time">{formatDate(inv.createdAt)}</span>
                                     </div>
                                 </li>
                             ))}
+                            {invoices.length === 0 && !loadingData && (
+                                <li className="activity-item"><div className="activity-text"><span className="activity-desc" style={{ color: '#64748B' }}>No invoices yet. Upload your first invoice!</span></div></li>
+                            )}
                         </ul>
                     </div>
                 </section>
@@ -368,14 +391,18 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredInvoices.map(inv => (
+                                {loadingData ? (
+                                    <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
+                                ) : filteredInvoices.length === 0 ? (
+                                    <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
+                                ) : filteredInvoices.map(inv => (
                                     <tr key={inv.id} data-status={inv.status}>
-                                        <td className="td-id">{inv.id}</td>
-                                        <td>{inv.company}</td>
-                                        <td className="td-amount">{inv.amount}</td>
-                                        <td>{inv.due}</td>
-                                        <td><span className={`badge ${inv.riskClass}`}>{inv.risk}</span></td>
-                                        <td><span className={`badge ${inv.statusClass}`}>{inv.status}</span></td>
+                                        <td className="td-id">{inv.invoiceNumber}</td>
+                                        <td>{inv.debtorCompany}</td>
+                                        <td className="td-amount">{formatAmount(inv.amount)}</td>
+                                        <td>{formatDate(inv.dueDate)}</td>
+                                        <td><span className={`badge ${getRiskClass(inv.riskLevel)}`}>{inv.riskLevel ? inv.riskLevel.charAt(0).toUpperCase() + inv.riskLevel.slice(1) : '—'}</span></td>
+                                        <td><span className={`badge ${getStatusClass(inv.status)}`}>{getStatusLabel(inv.status)}</span></td>
                                         <td><button className="btn-ghost-sm">View</button></td>
                                     </tr>
                                 ))}
