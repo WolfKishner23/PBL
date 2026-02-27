@@ -11,7 +11,26 @@ dist/
 # IDE
 .vscode/
 .idea/
+.gemini/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+ai-service/venv/
+ai-service/__pycache__/
+
+# Uploads (user data)
+backend/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# ML model (can be retrained)
+ai-service/model/
