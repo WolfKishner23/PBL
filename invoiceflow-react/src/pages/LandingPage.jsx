@@ -13,7 +13,23 @@ export default function LandingPage() {
             });
         }, { threshold: 0.1 });
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-        return () => observer.disconnect();
+
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        const handleScroll = () => {
+            if (window.scrollY > 30) {
+                navbar?.classList.add('scrolled');
+            } else {
+                navbar?.classList.remove('scrolled');
+            }
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('scroll', handleScroll);
+        };
     }, []);
 
     return (
@@ -30,9 +46,6 @@ export default function LandingPage() {
                     </Link>
                     <ul className="nav-links" id="navLinks">
                         <li><a href="#features">Features</a></li>
-                        <li><a href="#pricing">Pricing</a></li>
-                        <li><a href="#about">About</a></li>
-                        <li><a href="#blog">Blog</a></li>
                     </ul>
                     <div className="nav-actions">
                         <Link to="/login" className="btn-ghost">Sign In</Link>
@@ -43,6 +56,21 @@ export default function LandingPage() {
 
             {/* HERO */}
             <section id="hero" className="hero">
+                {/* Animated gradient mesh background */}
+                <div className="hero-mesh"></div>
+                {/* Noise/grain texture overlay */}
+                <div className="hero-noise"></div>
+                {/* Floating particles */}
+                <div className="hero-particles">
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                    <div className="particle"></div>
+                </div>
                 <div className="hero-glow"></div>
                 <div className="container hero-content">
                     <div className="hero-badge fade-in">
@@ -67,34 +95,11 @@ export default function LandingPage() {
                             View Demo
                         </Link>
                     </div>
-                    <div className="hero-stats fade-in">
-                        <div className="stat-pill"><span className="stat-number">₹500Cr+</span><span className="stat-label">Funded</span></div>
-                        <div className="stat-divider"></div>
-                        <div className="stat-pill"><span className="stat-number">2,400+</span><span className="stat-label">Businesses</span></div>
-                        <div className="stat-divider"></div>
-                        <div className="stat-pill"><span className="stat-number">48hr</span><span className="stat-label">Avg. Funding</span></div>
-                    </div>
+
                 </div>
                 <div className="hero-grid-bg"></div>
             </section>
 
-            {/* STATS BAR */}
-            <section className="stats-bar">
-                <div className="stats-track">
-                    <div className="stats-track-inner">
-                        {['82% SMBs face cash flow issues', '$3.8T global invoice factoring market', '8.2% annual growth rate', '₹50K Cr India market opportunity',
-                            '82% SMBs face cash flow issues', '$3.8T global invoice factoring market', '8.2% annual growth rate', '₹50K Cr India market opportunity'].map((text, i) => {
-                                const [highlight, ...rest] = text.split(' ');
-                                return (
-                                    <span key={i}>
-                                        <div className="stat-item"><span className="stat-highlight">{highlight}</span> {rest.join(' ')}</div>
-                                        {i < 7 && <div className="stat-sep">◆</div>}
-                                    </span>
-                                );
-                            })}
-                    </div>
-                </div>
-            </section>
 
             {/* HOW IT WORKS */}
             <section id="features" className="how-it-works">
@@ -148,104 +153,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* PRICING */}
-            <section id="pricing" className="pricing">
-                <div className="container">
-                    <div className="section-header fade-in">
-                        <span className="section-tag">Pricing</span>
-                        <h2 className="section-heading">Simple, <span className="text-gradient">transparent</span> pricing</h2>
-                        <p className="section-sub">Start free. Scale as you grow. No surprise charges.</p>
-                    </div>
-                    <div className="pricing-grid">
-                        <div className="pricing-card fade-in">
-                            <div className="pricing-tier">Starter</div>
-                            <div className="pricing-price"><span className="price-amount">Free</span></div>
-                            <p className="pricing-desc">Perfect for freelancers and micro-businesses getting started.</p>
-                            <ul className="pricing-features">
-                                {['Up to 3 invoices/month', 'Basic AI risk scoring', 'Email support', 'Dashboard access'].map((f, i) => (
-                                    <li key={i}>
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <Link to="/register" className="btn-outline btn-full">Get Started</Link>
-                        </div>
-                        <div className="pricing-card featured fade-in">
-                            <div className="featured-badge">Most Popular</div>
-                            <div className="pricing-tier">Growth</div>
-                            <div className="pricing-price"><span className="price-currency">₹</span><span className="price-amount">4,999</span><span className="price-period">/mo</span></div>
-                            <p className="pricing-desc">For growing SMBs that need consistent cash flow.</p>
-                            <ul className="pricing-features">
-                                {['Unlimited invoices', 'Advanced AI + fraud detection', 'Priority funding (24hr)', 'ERP integrations (Tally, Zoho)', 'Dedicated account manager'].map((f, i) => (
-                                    <li key={i}>
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <Link to="/register" className="btn-primary btn-full">Get Started</Link>
-                        </div>
-                        <div className="pricing-card fade-in">
-                            <div className="pricing-tier">Enterprise</div>
-                            <div className="pricing-price"><span className="price-amount">Custom</span></div>
-                            <p className="pricing-desc">For large enterprises needing tailored solutions and SLAs.</p>
-                            <ul className="pricing-features">
-                                {['Everything in Growth', 'Custom API & webhooks', 'White-label dashboard', '99.99% SLA guarantee', 'On-premise deployment option'].map((f, i) => (
-                                    <li key={i}>
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8l3 3 5-6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <a href="#" className="btn-outline btn-full">Contact Sales</a>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
-            {/* TESTIMONIALS */}
-            <section id="about" className="testimonials">
-                <div className="container">
-                    <div className="section-header fade-in">
-                        <span className="section-tag">Testimonials</span>
-                        <h2 className="section-heading">Loved by <span className="text-gradient">businesses</span> across India</h2>
-                        <p className="section-sub">Hear from founders who transformed their cash flow with InvoiceFlow.</p>
-                    </div>
-                    <div className="testimonials-grid">
-                        {[
-                            { quote: '"InvoiceFlow completely changed our cash flow game. We used to wait 60-90 days for payments — now we get funded in under 2 days. It\'s like having a CFO on autopilot."', name: 'Rajesh Kumar', company: 'CEO, BuildRight Infra', initials: 'RK' },
-                            { quote: '"The AI scoring is incredibly accurate. We\'ve processed over ₹12 Cr through the platform with zero fraud incidents. The Tally integration saved our accounts team hours every week."', name: 'Priya Sharma', company: 'CFO, NovaTech Solutions', initials: 'PS' },
-                            { quote: '"As a textile exporter, unpredictable cash flow was killing our growth. InvoiceFlow gave us the financial certainty we needed to scale from 50 to 200+ employees in a year."', name: 'Arjun Mehta', company: 'Founder, Weavewell Exports', initials: 'AM' },
-                        ].map((t, i) => (
-                            <div className="testimonial-card fade-in" key={i}>
-                                <div className="stars">{[...Array(5)].map((_, j) => <svg key={j} width="16" height="16" viewBox="0 0 16 16" fill="#FBBF24"><path d="M8 1l2.2 4.6L15 6.3l-3.5 3.4.8 4.8L8 12.2 3.7 14.5l.8-4.8L1 6.3l4.8-.7z" /></svg>)}</div>
-                                <p className="testimonial-quote">{t.quote}</p>
-                                <div className="testimonial-author">
-                                    <div className="author-avatar">{t.initials}</div>
-                                    <div className="author-info">
-                                        <span className="author-name">{t.name}</span>
-                                        <span className="author-company">{t.company}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA BANNER */}
-            <section className="cta-banner">
-                <div className="container cta-content">
-                    <div className="cta-glow"></div>
-                    <h2 className="cta-heading fade-in">Stop Waiting. <span className="text-gradient">Start Growing.</span></h2>
-                    <p className="cta-sub fade-in">Join 2,400+ businesses already using InvoiceFlow to unlock their working capital.</p>
-                    <Link to="/register" className="btn-primary btn-lg fade-in">
-                        Get Started — It's Free
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </Link>
-                </div>
-            </section>
 
             {/* FOOTER */}
             <footer id="blog" className="footer">
@@ -261,9 +169,9 @@ export default function LandingPage() {
                         <p className="footer-copy">© 2026 InvoiceFlow Technologies Pvt. Ltd. All rights reserved.</p>
                     </div>
                     <div className="footer-links">
-                        <a href="#">Privacy Policy</a>
-                        <a href="#">Terms of Service</a>
-                        <a href="#">Contact</a>
+                        <Link to="/privacy">Privacy Policy</Link>
+                        <Link to="/terms">Terms of Service</Link>
+                        <Link to="/contact">Contact</Link>
                     </div>
                 </div>
             </footer>

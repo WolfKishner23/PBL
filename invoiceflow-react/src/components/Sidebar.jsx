@@ -1,12 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useState, useRef, useEffect } from 'react';
 
 const navItems = [
     { to: '/dashboard', icon: 'grid', label: 'Dashboard', section: 'dashboard' },
     { to: '/dashboard', icon: 'invoice', label: 'My Invoices', section: 'invoices' },
     { to: '/upload', icon: 'upload', label: 'Upload Invoice', section: 'upload' },
     { to: '/dashboard', icon: 'chart', label: 'Cash Flow', section: 'cashflow' },
-    { to: '/dashboard', icon: 'settings', label: 'Settings', section: 'settings' },
 ];
 
 const financeNavItems = [
@@ -14,7 +14,6 @@ const financeNavItems = [
     { to: '/finance', icon: 'invoice', label: 'Invoice Queue', section: 'queue' },
     { to: '/finance', icon: 'chart', label: 'Portfolio', section: 'portfolio' },
     { to: '/finance', icon: 'analytics', label: 'Analytics', section: 'analytics' },
-    { to: '/finance', icon: 'settings', label: 'Settings', section: 'settings' },
 ];
 
 const adminNavItems = [
@@ -22,7 +21,6 @@ const adminNavItems = [
     { to: '/admin', icon: 'users', label: 'Users', section: 'users' },
     { to: '/admin', icon: 'invoice', label: 'Invoices', section: 'invoices' },
     { to: '/admin', icon: 'analytics', label: 'Analytics', section: 'analytics' },
-    { to: '/admin', icon: 'settings', label: 'Settings', section: 'settings' },
 ];
 
 const icons = {
@@ -87,8 +85,25 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
     const userName = user?.name || localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'User');
     const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner';
+    const userEmail = user?.email || 'user@invoiceflow.in';
+    const businessName = user?.company || 'InvoiceFlow Business';
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     function handleLogout() {
+        setMenuOpen(false);
         logout();
         navigate('/login');
     }
@@ -115,36 +130,63 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
                                     to={item.to}
                                     className={`nav-item${isActive ? ' active' : ''}`}
                                     data-section={item.section}
+                                    onClick={(e) => {
+                                        // If we're already on the same page, scroll to the section
+                                        if (location.pathname === item.to || (location.pathname === '/dashboard' && item.to === '/dashboard')) {
+                                            const sectionEl = document.getElementById(`section-${item.section}`);
+                                            if (sectionEl) {
+                                                e.preventDefault();
+                                                sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                        }
+                                    }}
                                 >
                                     {icons[item.icon]}
                                     {item.label}
                                 </Link>
                             );
                         })}
-                        {/* Logout button */}
-                        <button
-                            className="nav-item"
-                            onClick={handleLogout}
-                            style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: '8px', color: '#EF4444' }}
-                        >
-                            {icons.logout}
-                            Logout
-                        </button>
                     </nav>
                 </div>
                 <div className="sidebar-bottom">
                     <hr className="sidebar-divider" />
-                    <div className="user-card">
+                    <div className="user-card" ref={menuRef} style={{ position: 'relative' }}>
                         <div className={`user-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>{initials}</div>
                         <div className="user-info">
                             <span className="user-name">{userName}</span>
                             <span className="user-role">{userRole}</span>
                         </div>
-                        <svg className="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <svg
+                            className="user-more"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            onClick={() => setMenuOpen(!menuOpen)}
+                        >
                             <circle cx="8" cy="3" r="1.2" fill="currentColor" />
                             <circle cx="8" cy="8" r="1.2" fill="currentColor" />
                             <circle cx="8" cy="13" r="1.2" fill="currentColor" />
                         </svg>
+
+                        {/* Dropdown Menu */}
+                        {menuOpen && (
+                            <div className="user-dropdown">
+                                <div className="user-dropdown-profile">
+                                    <div className={`user-dropdown-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>{initials}</div>
+                                    <div className="user-dropdown-details">
+                                        <span className="user-dropdown-business">{businessName}</span>
+                                        <span className="user-dropdown-name">{userName}</span>
+                                        <span className="user-dropdown-email">{userEmail}</span>
+                                    </div>
+                                </div>
+                                <div className="user-dropdown-divider"></div>
+                                <button className="user-dropdown-logout" onClick={handleLogout}>
+                                    {icons.logout}
+                                    Logout
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>

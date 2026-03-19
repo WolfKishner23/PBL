@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/UploadPage';
 import FinanceDashboard from './pages/FinanceDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import ContactPage from './pages/ContactPage';
 
 function App() {
   return (
@@ -39,6 +42,9 @@ function App() {
               <AdminDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/contact" element={<ContactPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

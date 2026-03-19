@@ -305,7 +305,7 @@ export default function Dashboard() {
                 </header>
 
                 {/* Stat Cards */}
-                <section className="stat-cards">
+                <section id="section-dashboard" className="stat-cards">
                     {[
                         { label: 'Total Invoices', value: totalInvoices.toString(), change: `${invoices.filter(i => i.status === 'funded').length} funded`, accent: 'blue', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg> },
                         { label: 'Amount Funded', value: totalFunded > 100000 ? `₹${(totalFunded / 100000).toFixed(1)}L` : formatAmount(totalFunded), change: `${invoices.filter(i => i.status === 'funded').length} invoices`, accent: 'green', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 6l4-4 4 4M5 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> },
@@ -324,7 +324,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* Charts & Activity */}
-                <section className="two-col">
+                <section id="section-cashflow" className="two-col">
                     <div className="card chart-card">
                         <div className="card-header">
                             <div>
@@ -360,7 +360,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* Invoice Table */}
-                <section className="card table-card">
+                <section id="section-invoices" className="card table-card">
                     <div className="table-header">
                         <div className="table-header-left">
                             <h2 className="card-title">Recent Invoices</h2>

@@ -157,6 +157,121 @@ input {
     color: var(--gray-200);
 }
 
+/* ── User Dropdown Menu ── */
+.user-dropdown {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: -10px;
+    width: calc(100% + 20px);
+    min-width: 240px;
+    background: rgba(15, 22, 41, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 14px;
+    padding: 0;
+    z-index: 200;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    animation: dropdown-slide-up 0.2s ease;
+    overflow: hidden;
+}
+
+@keyframes dropdown-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.user-dropdown-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+}
+
+.user-dropdown-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--blue-bg);
+    border: 1.5px solid rgba(59, 130, 246, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--blue);
+    flex-shrink: 0;
+}
+
+.user-dropdown-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.user-dropdown-business {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    word-break: break-word;
+    margin-bottom: 2px;
+}
+
+.user-dropdown-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-300);
+    word-break: break-word;
+}
+
+.user-dropdown-email {
+    font-size: 11px;
+    color: var(--gray-400);
+    word-break: break-all;
+    margin-top: 1px;
+}
+
+.user-dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 0;
+}
+
+.user-dropdown-logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: #EF4444;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    text-align: left;
+}
+
+.user-dropdown-logout:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.user-dropdown-logout svg {
+    width: 18px;
+    height: 18px;
+    color: #EF4444;
+}
+
 /* ═══════════════════ MAIN ═══════════════════ */
 .main {
     margin-left: var(--sidebar-w);
@@ -222,7 +337,7 @@ input {
 
 .search-box:focus-within {
     border-color: var(--blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .15), 0 0 20px rgba(59, 130, 246, .12);
 }
 
 .search-box input {

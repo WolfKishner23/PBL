@@ -8,23 +8,62 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({});
     const navigate = useNavigate();
     const { login } = useAuth();
 
+    function validateEmail(val) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(val);
+    }
+
+    function validateFields() {
+        const errors = {};
+        if (!email.trim()) {
+            errors.email = 'Email is required';
+        } else if (!validateEmail(email)) {
+            errors.email = 'Please enter a valid email address';
+        }
+        if (!password.trim()) {
+            errors.password = 'Password is required';
+        } else if (password.length < 8) {
+            errors.password = 'Password must be at least 8 characters';
+        }
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    }
+
     async function doLogin(e) {
         if (e) e.preventDefault();
-        if (!email.trim() || !password.trim()) return;
+        if (!validateFields()) return;
         setError('');
         setLoading(true);
 
         try {
             const user = await login(email, password);
-            // Redirect based on role
             const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
             navigate(roleRoutes[user.role] || '/dashboard');
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed. Please try again.');
             setLoading(false);
+        }
+    }
+
+    function handleEmailChange(val) {
+        setEmail(val);
+        if (fieldErrors.email) {
+            const errors = { ...fieldErrors };
+            if (val.trim() && validateEmail(val)) delete errors.email;
+            setFieldErrors(errors);
+        }
+    }
+
+    function handlePasswordChange(val) {
+        setPassword(val);
+        if (fieldErrors.password) {
+            const errors = { ...fieldErrors };
+            if (val.length >= 8) delete errors.password;
+            setFieldErrors(errors);
         }
     }
 
@@ -58,14 +97,32 @@ export default function LoginPage() {
                         <form className="auth-form" onSubmit={doLogin}>
                             <div className="form-group">
                                 <label className="form-label" htmlFor="loginEmail">Email address</label>
-                                <input type="email" className="form-input" id="loginEmail" placeholder="name@company.com" required value={email} onChange={e => setEmail(e.target.value)} />
+                                <input
+                                    type="email"
+                                    className={`form-input${fieldErrors.email ? ' input-error' : ''}`}
+                                    id="loginEmail"
+                                    placeholder="name@company.com"
+                                    required
+                                    value={email}
+                                    onChange={e => handleEmailChange(e.target.value)}
+                                />
+                                {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
                             </div>
                             <div className="form-group">
                                 <div className="form-label-row">
                                     <label className="form-label" htmlFor="loginPassword">Password</label>
                                     <Link to="/forgot" className="form-link">Forgot password?</Link>
                                 </div>
-                                <input type="password" className="form-input" id="loginPassword" placeholder="••••••••" required value={password} onChange={e => setPassword(e.target.value)} />
+                                <input
+                                    type="password"
+                                    className={`form-input${fieldErrors.password ? ' input-error' : ''}`}
+                                    id="loginPassword"
+                                    placeholder="••••••••"
+                                    required
+                                    value={password}
+                                    onChange={e => handlePasswordChange(e.target.value)}
+                                />
+                                {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
                             </div>
                             <button type="submit" className="btn-auth-primary" disabled={loading}>
                                 {loading ? 'Signing in…' : 'Sign In'}
