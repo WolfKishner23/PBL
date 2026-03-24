@@ -64,7 +64,6 @@ services:
   - type: web
     name: invoiceflow-frontend
     runtime: static
-    plan: free
     rootDir: invoiceflow-react
     buildCommand: npm install && npm run build
     staticPublishPath: dist
