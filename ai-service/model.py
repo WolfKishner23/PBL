@@ -16,9 +16,9 @@ feature_cols_path = os.path.join(BASE_DIR, 'feature_cols.pkl')
 try:
     risk_model = joblib.load(model_path)
     feature_cols = joblib.load(feature_cols_path)
-    print("✅ Risk model loaded successfully")
+    print("[OK] Risk model loaded successfully")
 except FileNotFoundError:
-    print("⚠️  risk_model.pkl not found! Run train.py first.")
+    print("[WARN] risk_model.pkl not found! Run train.py first.")
     risk_model = None
     feature_cols = [
         'debtor_credit_score', 'payment_history_score', 'industry_risk_score',
@@ -240,17 +240,17 @@ def predict_risk(invoice_data: dict) -> dict:
     # ── Risk Flags (specific issues detected) ────────────────────────────────
     flags = []
     if features['gst_provided'] == 0:
-        flags.append("⚠️ GST number not provided or invalid")
+        flags.append("[!] GST number not provided or invalid")
     if features['previous_invoices'] == 0:
-        flags.append("⚠️ First-time debtor — no payment history")
+        flags.append("[!] First-time debtor - no payment history")
     if features['avg_payment_delay'] > 20:
-        flags.append("⚠️ High average payment delay history")
+        flags.append("[!] High average payment delay history")
     if features['amount'] > 2000000:
-        flags.append("⚠️ High invoice amount — increased exposure")
+        flags.append("[!] High invoice amount - increased exposure")
     if features['days_to_due'] < 15:
-        flags.append("⚠️ Very short payment window")
+        flags.append("[!] Very short payment window")
     if features['industry_risk_score'] < 65:
-        flags.append("⚠️ High-risk industry segment")
+        flags.append("[!] High-risk industry segment")
 
     # ── Recommendations ───────────────────────────────────────────────────────
     recommendations = {

@@ -11,8 +11,13 @@ const app = express();
 // ─── CORS Configuration ───────────────────────────────────────────────────────
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests from any localhost port (Vite may use 5173, 5174, 5175, etc.)
-        if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+        // Allow requests from localhost, Render domains, or custom frontend URL
+        const allowedPatterns = [
+            /^http:\/\/localhost:\d+$/,
+            /\.onrender\.com$/,
+        ];
+        const envOrigin = process.env.FRONTEND_URL;
+        if (!origin || allowedPatterns.some(p => p.test(origin)) || origin === envOrigin) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));

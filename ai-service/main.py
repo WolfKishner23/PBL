@@ -20,7 +20,7 @@ app = FastAPI(
 # ─── CORS Setup (allow Node.js backend) ──────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,5 +99,5 @@ async def risk_assessment(data: dict):
 # ─── Run Server ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    print("🤖 Starting InvoiceFlow AI Service...")
+    print("[AI] Starting InvoiceFlow AI Service...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
