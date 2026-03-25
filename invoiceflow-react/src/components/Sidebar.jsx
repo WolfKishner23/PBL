@@ -76,7 +76,7 @@ const icons = {
     ),
 };
 
-export default function Sidebar({ variant = 'business', activeSection, isOpen, onClose }) {
+export default function Sidebar({ variant = 'business', activeSection, isOpen, onClose, onSectionClick }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useAuth();
@@ -131,7 +131,14 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
                                     className={`nav-item${isActive ? ' active' : ''}`}
                                     data-section={item.section}
                                     onClick={(e) => {
-                                        // If we're already on the same page, scroll to the section
+                                        // If parent provides onSectionClick, use it (for scroll + glow)
+                                        if (onSectionClick && location.pathname === item.to) {
+                                            e.preventDefault();
+                                            onSectionClick(item.section);
+                                            if (onClose) onClose();
+                                            return;
+                                        }
+                                        // Fallback: scroll to section if on the same page
                                         if (location.pathname === item.to || (location.pathname === '/dashboard' && item.to === '/dashboard')) {
                                             const sectionEl = document.getElementById(`section-${item.section}`);
                                             if (sectionEl) {

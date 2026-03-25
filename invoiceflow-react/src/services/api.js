@@ -72,4 +72,12 @@ export const adminAPI = {
     deleteUser: (id) => API.delete(`/admin/users/${id}`),
 };
 
+// ─── AI API ───────────────────────────────────────────────────────────────────
+export const aiAPI = {
+    extract: (formData) => API.post('/ai/extract', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+};
+
 export default API;
+

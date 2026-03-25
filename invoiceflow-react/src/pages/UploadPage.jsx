@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { invoiceAPI } from '../services/api';
+import { invoiceAPI, aiAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import '../styles/dashboard.css';
 import '../styles/upload.css';
@@ -69,6 +69,8 @@ export default function UploadPage() {
         }
     }
 
+    const [extractionStatus, setExtractionStatus] = useState(''); // '', 'extracting', 'done', 'failed'
+
     function handleFile(f) {
         if (!f) return;
         const validTypes = ['application/pdf', 'image/png', 'image/jpeg'];
@@ -76,6 +78,40 @@ export default function UploadPage() {
         if (f.size > 10 * 1024 * 1024) return;
         setFile(f);
         setCurrentStep(1);
+        extractFromFile(f);
+    }
+
+    async function extractFromFile(f) {
+        setExtractionStatus('extracting');
+        setFieldErrors({}); // clear any previous errors
+        try {
+            const fd = new FormData();
+            fd.append('pdf', f);
+            const res = await aiAPI.extract(fd);
+            // Backend returns { extractedData: { success, rawText, extracted: {...}, confidence } }
+            const wrapper = res.data?.extractedData || res.data || {};
+            const data = wrapper?.extracted || wrapper || {};
+            const hasData = data.amount || data.debtorCompany || data.debtorGST || data.dueDate || data.industry;
+            if (hasData) {
+                setFormData(prev => ({
+                    ...prev,
+                    amount: data.amount ? String(data.amount) : prev.amount,
+                    debtorCompany: data.debtorCompany || prev.debtorCompany,
+                    debtorGST: data.debtorGST || prev.debtorGST,
+                    dueDate: data.dueDate || prev.dueDate,
+                    paymentTerms: data.paymentTerms || prev.paymentTerms,
+                    industry: data.industry || prev.industry,
+                    description: data.description || prev.description,
+                }));
+                setFieldErrors({}); // clear errors after populating
+                setExtractionStatus('done');
+            } else {
+                setExtractionStatus('failed');
+            }
+        } catch (err) {
+            console.warn('AI extraction unavailable:', err.message);
+            setExtractionStatus('failed');
+        }
     }
 
     function handleDrop(e) {
@@ -285,7 +321,7 @@ export default function UploadPage() {
                                     </svg>
                                     <p className="dropzone-main">Drag & drop your invoice PDF here</p>
                                     <p className="dropzone-alt">or <span className="dropzone-link">click to browse</span></p>
-                                    <p className="dropzone-hint">PDF, PNG, JPG — max 10MB</p>
+                                    <p className="dropzone-hint">PDF, PNG, JPG — max 10MB (optional)</p>
                                     <input type="file" ref={fileInputRef} accept=".pdf,.png,.jpg,.jpeg" hidden onChange={e => { if (e.target.files.length > 0) handleFile(e.target.files[0]); }} />
                                 </div>
                             ) : (
@@ -305,12 +341,23 @@ export default function UploadPage() {
                                         </div>
                                         <button className="uploaded-replace" onClick={handleReplace}>Click to replace</button>
                                     </div>
-                                    <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk}>
-                                        {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract'}
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                    </button>
+                                    {extractionStatus === 'extracting' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', color: '#3B82F6', fontSize: '13px' }}>
+                                            ⚡ AI is extracting invoice data…
+                                        </div>
+                                    )}
+                                    {extractionStatus === 'done' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', color: '#22C55E', fontSize: '13px' }}>
+                                            ✓ AI extracted fields — review & edit on the right
+                                        </div>
+                                    )}
                                 </div>
                             )}
+
+                            {/* Create Invoice Button — always visible */}
+                            <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk} style={{ marginTop: '16px' }}>
+                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract  →'}
+                            </button>
                         </div>
 
                         {/* STEP 3 — AI Risk Score Card */}
@@ -419,11 +466,7 @@ export default function UploadPage() {
                                         <input type="text" className={`form-input${fieldErrors.debtorCompany ? ' input-error' : ''}`} placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => updateField('debtorCompany', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.debtorCompany ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
                                         {fieldErrors.debtorCompany && <span className="field-error">{fieldErrors.debtorCompany}</span>}
                                     </div>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>GST Number</label>
-                                        <input type="text" className={`form-input${fieldErrors.debtorGST ? ' input-error' : ''}`} placeholder="27AATCS1286K1ZP" maxLength={15} value={formData.debtorGST} onChange={e => updateField('debtorGST', e.target.value.toUpperCase())} style={{ background: '#0F172A', border: fieldErrors.debtorGST ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
-                                        {fieldErrors.debtorGST && <span className="field-error">{fieldErrors.debtorGST}</span>}
-                                    </div>
+
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Due Date *</label>
                                         <input type="date" className={`form-input${fieldErrors.dueDate ? ' input-error' : ''}`} value={formData.dueDate} onChange={e => updateField('dueDate', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.dueDate ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
