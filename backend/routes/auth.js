@@ -5,6 +5,7 @@ const {
     login,
     getMe,
     forgotPassword,
+    resetPassword,
     updateProfile,
     registerValidation,
     loginValidation
@@ -21,6 +22,9 @@ router.get('/me', auth, getMe);
 
 // POST /api/auth/forgot — Forgot password (send OTP)
 router.post('/forgot', forgotPassword);
+
+// POST /api/auth/reset-password — Verify OTP and reset password
+router.post('/reset-password', resetPassword);
 
 // PUT  /api/auth/profile — Update profile
 router.put('/profile', auth, updateProfile);
