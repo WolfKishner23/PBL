@@ -1,15 +1,36 @@
 const nodemailer = require('nodemailer');
 
 // ─── Setup Nodemailer Transporter ─────────────────────────────────────────────
-const createTransporter = () => {
+// In development: auto-creates an Ethereal test account (no real email needed)
+// In production: uses Gmail SMTP from .env
+const createTransporter = async () => {
+  if (process.env.NODE_ENV !== 'production') {
+    // Auto-create a free Ethereal test account
+    const testAccount = await nodemailer.createTestAccount();
+    console.log('📧 Ethereal test account created:');
+    console.log('   User:', testAccount.user);
+    console.log('   Pass:', testAccount.pass);
+
+    return nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+  }
+
+  // Production: use real Gmail SMTP from .env
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: parseInt(process.env.EMAIL_PORT),
-    secure: false, // true for 465, false for 587
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
+      pass: process.env.EMAIL_PASS,
+    },
   });
 };
 
@@ -20,17 +41,30 @@ const createTransporter = () => {
  */
 const sendEmail = async ({ to, subject, html }) => {
   try {
-    const transporter = createTransporter();
+    const transporter = await createTransporter();
 
     const mailOptions = {
-      from: `"InvoiceFlow" <${process.env.EMAIL_USER}>`,
+      from: '"InvoiceFlow" <noreply@invoiceflow.dev>',
       to,
       subject,
-      html
+      html,
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log(`📧 Email sent successfully to ${to} | MessageID: ${result.messageId}`);
+
+    // In development, log the Ethereal preview URL so you can view the email
+    const previewUrl = nodemailer.getTestMessageUrl(result);
+    if (previewUrl) {
+      console.log('');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📬 OTP EMAIL PREVIEW (Ethereal Test Inbox):');
+      console.log('   ' + previewUrl);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('');
+    } else {
+      console.log(`📧 Email sent to ${to} | MessageID: ${result.messageId}`);
+    }
+
     return result;
   } catch (error) {
     console.error('❌ Email sending failed:', error.message);
@@ -56,7 +90,7 @@ const sendWelcomeEmail = async (user) => {
   return sendEmail({
     to: user.email,
     subject: 'Welcome to InvoiceFlow',
-    html
+    html,
   });
 };
 
@@ -68,7 +102,7 @@ const sendInvoiceStatusEmail = async (user, invoice, status) => {
     approved: '#28a745',
     rejected: '#dc3545',
     funded: '#17a2b8',
-    review: '#ffc107'
+    review: '#ffc107',
   };
 
   const html = `
@@ -90,7 +124,7 @@ const sendInvoiceStatusEmail = async (user, invoice, status) => {
   return sendEmail({
     to: user.email,
     subject: `Invoice #${invoice.invoiceNumber} — ${status.toUpperCase()}`,
-    html
+    html,
   });
 };
 
