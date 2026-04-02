@@ -42,7 +42,7 @@ export default function LoginPage() {
 
         try {
             const user = await login(email, password);
-            const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
+            const roleRoutes = { company: '/dashboard', finance: '/finance', admin: '/admin' };
             navigate(roleRoutes[user.role] || '/dashboard');
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed. Please try again.');

@@ -42,6 +42,11 @@ export const authAPI = {
     updateProfile: (data) => API.put('/auth/profile', data),
 };
 
+// ─── User API ─────────────────────────────────────────────────────────────────
+export const userAPI = {
+    getCompanies: () => API.get('/users/companies'),
+};
+
 // ─── Invoice API ──────────────────────────────────────────────────────────────
 export const invoiceAPI = {
     getAll: (params) => API.get('/invoices', { params }),
@@ -53,6 +58,12 @@ export const invoiceAPI = {
     uploadPDF: (id, formData) => API.post(`/invoices/${id}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    // ─── Circular Economy ────────────────────────────────────────────────
+    confirm: (id) => API.put(`/invoices/${id}/confirm`),
+    dispute: (id, reason) => API.put(`/invoices/${id}/dispute`, { reason }),
+    fund: (id) => API.put(`/invoices/${id}/fund`),
+    markPaid: (id) => API.put(`/invoices/${id}/mark-paid`),
+    settle: (id) => API.put(`/invoices/${id}/settle`),
 };
 
 // ─── Factoring API ────────────────────────────────────────────────────────────
@@ -81,4 +92,3 @@ export const aiAPI = {
 };
 
 export default API;
-

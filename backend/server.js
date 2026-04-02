@@ -14,6 +14,8 @@ app.use(cors({
         // Allow requests from localhost, Render domains, or custom frontend URL
         const allowedPatterns = [
             /^http:\/\/localhost:\d+$/,
+            /^http:\/\/192\.168\.\d+\.\d+:\d+$/,  // Local network
+            /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Local network (10.x)
             /\.onrender\.com$/,
         ];
         const envOrigin = process.env.FRONTEND_URL;
@@ -37,6 +39,7 @@ app.use('/uploads', express.static('uploads'));
 
 // ─── Mount Routes ─────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
 app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/factoring', require('./routes/factoring'));
 app.use('/api/admin', require('./routes/admin'));

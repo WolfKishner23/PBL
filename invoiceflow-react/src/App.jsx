@@ -25,12 +25,12 @@ function App() {
           <Route path="/forgot" element={<ForgotPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/dashboard" element={
-            <ProtectedRoute roles={['business']}>
+            <ProtectedRoute roles={['company']}>
               <Dashboard />
             </ProtectedRoute>
           } />
           <Route path="/upload" element={
-            <ProtectedRoute roles={['business']}>
+            <ProtectedRoute roles={['company']}>
               <UploadPage />
             </ProtectedRoute>
           } />

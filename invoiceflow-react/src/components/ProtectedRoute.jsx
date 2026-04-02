@@ -22,7 +22,7 @@ export default function ProtectedRoute({ children, roles }) {
 
     if (roles && user && !roles.includes(user.role)) {
         // Redirect to the correct dashboard for their role
-        const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
+        const roleRoutes = { company: '/dashboard', finance: '/finance', admin: '/admin' };
         return <Navigate to={roleRoutes[user.role] || '/dashboard'} replace />;
     }
 

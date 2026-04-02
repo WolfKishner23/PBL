@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { invoiceAPI, aiAPI } from '../services/api';
+import { invoiceAPI, aiAPI, userAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import '../styles/dashboard.css';
 import '../styles/upload.css';
@@ -17,13 +17,31 @@ export default function UploadPage() {
     const [showToast, setShowToast] = useState(false);
     const [error, setError] = useState('');
     const [createdInvoice, setCreatedInvoice] = useState(null);
-    const [riskResult, setRiskResult] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Companies list for debtor dropdown
+    const [companies, setCompanies] = useState([]);
+    const [loadingCompanies, setLoadingCompanies] = useState(true);
+
+    // Fetch companies on mount
+    useEffect(() => {
+        async function fetchCompanies() {
+            try {
+                const res = await userAPI.getCompanies();
+                setCompanies(res.data.companies || []);
+            } catch (err) {
+                console.error('Failed to fetch companies:', err);
+            } finally {
+                setLoadingCompanies(false);
+            }
+        }
+        fetchCompanies();
+    }, []);
 
     // Form fields
     const [formData, setFormData] = useState({
         amount: '',
-        debtorCompany: '',
+        debtorId: '',
         debtorGST: '',
         dueDate: '',
         paymentTerms: 'Net 30',
@@ -44,8 +62,8 @@ export default function UploadPage() {
         } else if (amt > 100000000) {
             errors.amount = 'Amount cannot exceed ₹10 Cr';
         }
-        if (!formData.debtorCompany.trim()) {
-            errors.debtorCompany = 'Debtor company name is required';
+        if (!formData.debtorId) {
+            errors.debtorId = 'Please select a debtor company';
         }
         if (formData.debtorGST.trim() && !validateGSTIN(formData.debtorGST.trim())) {
             errors.debtorGST = 'Invalid GSTIN format (e.g., 27AATCS1286K1ZP)';
@@ -69,7 +87,16 @@ export default function UploadPage() {
         }
     }
 
-    const [extractionStatus, setExtractionStatus] = useState(''); // '', 'extracting', 'done', 'failed'
+    // Auto-fill debtor GST when selecting a company
+    function handleDebtorChange(debtorId) {
+        updateField('debtorId', debtorId);
+        const company = companies.find(c => c.id === parseInt(debtorId));
+        if (company && company.gstNumber) {
+            updateField('debtorGST', company.gstNumber);
+        }
+    }
+
+    const [extractionStatus, setExtractionStatus] = useState('');
 
     function handleFile(f) {
         if (!f) return;
@@ -83,27 +110,24 @@ export default function UploadPage() {
 
     async function extractFromFile(f) {
         setExtractionStatus('extracting');
-        setFieldErrors({}); // clear any previous errors
+        setFieldErrors({});
         try {
             const fd = new FormData();
             fd.append('pdf', f);
             const res = await aiAPI.extract(fd);
-            // Backend returns { extractedData: { success, rawText, extracted: {...}, confidence } }
             const wrapper = res.data?.extractedData || res.data || {};
             const data = wrapper?.extracted || wrapper || {};
-            const hasData = data.amount || data.debtorCompany || data.debtorGST || data.dueDate || data.industry;
+            const hasData = data.amount || data.dueDate || data.industry;
             if (hasData) {
                 setFormData(prev => ({
                     ...prev,
                     amount: data.amount ? String(data.amount) : prev.amount,
-                    debtorCompany: data.debtorCompany || prev.debtorCompany,
-                    debtorGST: data.debtorGST || prev.debtorGST,
                     dueDate: data.dueDate || prev.dueDate,
                     paymentTerms: data.paymentTerms || prev.paymentTerms,
                     industry: data.industry || prev.industry,
                     description: data.description || prev.description,
                 }));
-                setFieldErrors({}); // clear errors after populating
+                setFieldErrors({});
                 setExtractionStatus('done');
             } else {
                 setExtractionStatus('failed');
@@ -127,10 +151,9 @@ export default function UploadPage() {
         setCurrentStep(2);
 
         try {
-            // Step 1: Create invoice in backend
             const res = await invoiceAPI.create({
                 amount: parseFloat(formData.amount) || 350000,
-                debtorCompany: formData.debtorCompany || 'Unknown Company',
+                debtorId: parseInt(formData.debtorId),
                 debtorGST: formData.debtorGST,
                 dueDate: formData.dueDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 paymentTerms: formData.paymentTerms,
@@ -141,7 +164,6 @@ export default function UploadPage() {
             const invoice = res.data.invoice;
             setCreatedInvoice(invoice);
 
-            // Step 2: Upload PDF if file exists
             if (file) {
                 const pdfData = new FormData();
                 pdfData.append('pdf', file);
@@ -160,22 +182,13 @@ export default function UploadPage() {
 
     async function handleSubmit() {
         if (!createdInvoice) return;
-        setError('');
-
-        try {
-            // Submit invoice → triggers AI risk scoring
-            const res = await invoiceAPI.submit(createdInvoice.id);
-            setRiskResult(res.data.riskResult);
-            setSubmitted(true);
-            setCurrentStep(4);
-            setShowToast(true);
-            setTimeout(() => {
-                setShowToast(false);
-                navigate('/dashboard');
-            }, 3000);
-        } catch (err) {
-            setError(err.response?.data?.error || 'Failed to submit invoice');
-        }
+        setSubmitted(true);
+        setCurrentStep(4);
+        setShowToast(true);
+        setTimeout(() => {
+            setShowToast(false);
+            navigate('/dashboard');
+        }, 3000);
     }
 
     function handleBack() {
@@ -189,7 +202,6 @@ export default function UploadPage() {
         setCurrentStep(1);
         setSubmitted(false);
         setCreatedInvoice(null);
-        setRiskResult(null);
     }
 
     function formatSize(bytes) {
@@ -202,16 +214,11 @@ export default function UploadPage() {
     const stepActive = (s) => currentStep === s;
     const lineCompleted = (afterStep) => currentStep > afterStep;
 
-    // Risk display helpers
-    const riskScore = riskResult?.riskScore || createdInvoice?.riskScore || null;
-    const riskLevel = riskResult?.riskLevel || createdInvoice?.riskLevel || 'medium';
-    const riskDetails = riskResult?.details || {};
-    const recommendation = riskResult?.recommendation || 'Invoice is being reviewed.';
-    const riskBadgeClass = riskLevel === 'low' ? 'risk-low' : riskLevel === 'high' ? 'risk-high' : 'risk-medium';
+    // Get selected debtor company name for display
+    const selectedDebtor = companies.find(c => c.id === parseInt(formData.debtorId));
 
     return (
         <>
-            {/* ─── SUCCESS TOAST NOTIFICATION ─── */}
             {showToast && (
                 <div className="toast-notification toast-success">
                     <div className="toast-icon">
@@ -221,8 +228,8 @@ export default function UploadPage() {
                         </svg>
                     </div>
                     <div className="toast-content">
-                        <span className="toast-title">Invoice Submitted Successfully!</span>
-                        <span className="toast-message">{riskResult?.riskLevel ? `Risk: ${riskLevel.toUpperCase()} (Score: ${riskScore}/100)` : 'Redirecting to dashboard…'}</span>
+                        <span className="toast-title">Invoice Created Successfully!</span>
+                        <span className="toast-message">Waiting for debtor confirmation. Redirecting…</span>
                     </div>
                     <button className="toast-close" onClick={() => setShowToast(false)}>✕</button>
                 </div>
@@ -230,7 +237,6 @@ export default function UploadPage() {
             <Sidebar variant="business" activeSection="upload" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <main className="main">
 
-                {/* ─── HEADER BAR ─── */}
                 <header className="header-bar">
                     <div className="header-left">
                         <button className="mobile-sidebar-btn" onClick={() => setSidebarOpen(true)} aria-label="Toggle sidebar">
@@ -238,18 +244,10 @@ export default function UploadPage() {
                         </button>
                         <div>
                             <h1 className="header-greeting">Upload Invoice</h1>
-                            <p className="header-date">Upload and submit for early payment</p>
+                            <p className="header-date">Create invoice against a debtor company</p>
                         </div>
                     </div>
                     <div className="header-right">
-                        <div className="search-box">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                            <input type="text" placeholder="Search invoices…" />
-                        </div>
-                        <button className="icon-btn notification-btn" aria-label="Notifications">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z" stroke="currentColor" strokeWidth="1.5" /><path d="M8 15a2 2 0 004 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                            <span className="notification-dot"></span>
-                        </button>
                         <Link to="/dashboard" className="btn-primary">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3" /><rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3" /><rect x="2" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3" /><rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3" /></svg>
                             Dashboard
@@ -257,27 +255,15 @@ export default function UploadPage() {
                     </div>
                 </header>
 
-                {/* ─── STEP PROGRESS BAR ─── */}
+                {/* Step Progress */}
                 <div className="step-progress" id="stepProgress">
-                    <div className={`step-item${stepActive(1) ? ' active' : ''}${stepCompleted(1) ? ' completed' : ''}`} data-step="1">
-                        <div className="step-circle">{stepCompleted(1) ? '✓' : '1'}</div>
-                        <span className="step-label">Upload PDF</span>
-                    </div>
+                    <div className={`step-item${stepActive(1) ? ' active' : ''}${stepCompleted(1) ? ' completed' : ''}`}><div className="step-circle">{stepCompleted(1) ? '✓' : '1'}</div><span className="step-label">Invoice Details</span></div>
                     <div className={`step-line${lineCompleted(1) ? ' completed' : ''}`}></div>
-                    <div className={`step-item${stepActive(2) ? ' active' : ''}${stepCompleted(2) ? ' completed' : ''}`} data-step="2">
-                        <div className="step-circle">{stepCompleted(2) ? '✓' : '2'}</div>
-                        <span className="step-label">Review Fields</span>
-                    </div>
+                    <div className={`step-item${stepActive(2) ? ' active' : ''}${stepCompleted(2) ? ' completed' : ''}`}><div className="step-circle">{stepCompleted(2) ? '✓' : '2'}</div><span className="step-label">Creating</span></div>
                     <div className={`step-line${lineCompleted(2) ? ' completed' : ''}`}></div>
-                    <div className={`step-item${stepActive(3) ? ' active' : ''}${stepCompleted(3) ? ' completed' : ''}`} data-step="3">
-                        <div className="step-circle">{stepCompleted(3) ? '✓' : '3'}</div>
-                        <span className="step-label">AI Risk Score</span>
-                    </div>
+                    <div className={`step-item${stepActive(3) ? ' active' : ''}${stepCompleted(3) ? ' completed' : ''}`}><div className="step-circle">{stepCompleted(3) ? '✓' : '3'}</div><span className="step-label">Review</span></div>
                     <div className={`step-line${lineCompleted(3) ? ' completed' : ''}`}></div>
-                    <div className={`step-item${stepActive(4) ? ' active' : ''}${stepCompleted(4) ? ' completed' : ''}`} data-step="4">
-                        <div className="step-circle">{stepCompleted(4) ? '✓' : '4'}</div>
-                        <span className="step-label">Submit</span>
-                    </div>
+                    <div className={`step-item${stepActive(4) ? ' active' : ''}${stepCompleted(4) ? ' completed' : ''}`}><div className="step-circle">{stepCompleted(4) ? '✓' : '4'}</div><span className="step-label">Done</span></div>
                 </div>
 
                 {error && (
@@ -290,22 +276,18 @@ export default function UploadPage() {
                     </div>
                 )}
 
-                {/* ─── CONTENT 2-COL ─── */}
                 <div className="upload-layout">
-
-                    {/* ═══ LEFT COLUMN ═══ */}
+                    {/* LEFT COLUMN */}
                     <div className="upload-left">
-
-                        {/* STEP 1 — Upload Card */}
+                        {/* Upload Card */}
                         <div className="card upload-card">
                             <div className="card-header">
                                 <div>
                                     <h2 className="card-title">Upload Invoice PDF</h2>
-                                    <p className="card-subtitle">Our AI will automatically extract all invoice fields</p>
+                                    <p className="card-subtitle">Optional — attach a PDF for records</p>
                                 </div>
                             </div>
 
-                            {/* Empty state — dropzone */}
                             {!file ? (
                                 <div
                                     className={`dropzone${dragOver ? ' drag-over' : ''}`}
@@ -325,7 +307,6 @@ export default function UploadPage() {
                                     <input type="file" ref={fileInputRef} accept=".pdf,.png,.jpg,.jpeg" hidden onChange={e => { if (e.target.files.length > 0) handleFile(e.target.files[0]); }} />
                                 </div>
                             ) : (
-                                /* Uploaded state */
                                 <div className="uploaded-state">
                                     <div className="uploaded-file">
                                         <div className="uploaded-icon">
@@ -354,74 +335,50 @@ export default function UploadPage() {
                                 </div>
                             )}
 
-                            {/* Create Invoice Button — always visible */}
                             <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk} style={{ marginTop: '16px' }}>
-                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract  →'}
+                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice →'}
                             </button>
                         </div>
 
-                        {/* STEP 3 — AI Risk Score Card */}
+                        {/* Review Card — after creation */}
                         {showRisk && (
                             <div className="card risk-card">
                                 <div className="card-header">
                                     <div>
-                                        <h2 className="card-title">AI Risk Assessment</h2>
-                                        <p className="card-subtitle">{riskScore ? `Score: ${riskScore}/100` : 'Submit to get AI risk score'}</p>
+                                        <h2 className="card-title">Invoice Created</h2>
+                                        <p className="card-subtitle">Awaiting debtor confirmation</p>
                                     </div>
-                                    <span className={`badge ${riskBadgeClass}`} style={{ fontSize: '12px', padding: '4px 12px' }}>
-                                        {riskScore ? `${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk` : 'Pending'}
+                                    <span className="badge status-review" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                                        Pending
                                     </span>
                                 </div>
 
-                                {/* 2×2 metrics */}
                                 <div className="risk-metrics">
-                                    <div className={`risk-metric-card ${riskScore && riskScore >= 60 ? 'green' : 'amber'}`}>
-                                        <span className="metric-label">Overall Score</span>
-                                        <span className="metric-value mono">{riskScore || '—'}<span className="metric-suffix">/100</span></span>
+                                    <div className="risk-metric-card amber">
+                                        <span className="metric-label">Advance (85%)</span>
+                                        <span className="metric-value mono">₹{createdInvoice?.advanceAmount ? parseFloat(createdInvoice.advanceAmount).toLocaleString('en-IN') : '—'}</span>
                                     </div>
-                                    <div className={`risk-metric-card ${riskDetails.paymentHistory >= 70 ? 'green' : 'amber'}`}>
-                                        <span className="metric-label">Pay History</span>
-                                        <span className="metric-value">{riskDetails.paymentHistory ? `${riskDetails.paymentHistory}` : '—'} <span className="metric-check">{riskDetails.paymentHistory >= 70 ? '✓' : '~'}</span></span>
-                                    </div>
-                                    <div className={`risk-metric-card ${riskDetails.debtorCredit >= 80 ? 'green' : 'amber'}`}>
-                                        <span className="metric-label">Debtor Credit</span>
-                                        <span className="metric-value">{riskDetails.debtorCredit ? `${riskDetails.debtorCredit}` : '—'} <span className="metric-check">{riskDetails.debtorCredit >= 80 ? '✓' : '~'}</span></span>
-                                    </div>
-                                    <div className={`risk-metric-card ${riskDetails.industryRisk >= 70 ? 'green' : 'amber'}`}>
-                                        <span className="metric-label">Industry Risk</span>
-                                        <span className="metric-value">{riskDetails.industryRisk ? `${riskDetails.industryRisk}` : '—'} <span className="metric-tilde">{riskDetails.industryRisk >= 70 ? '✓' : '~'}</span></span>
+                                    <div className="risk-metric-card amber">
+                                        <span className="metric-label">Discount Fee (2%)</span>
+                                        <span className="metric-value mono">₹{createdInvoice?.discountFee ? parseFloat(createdInvoice.discountFee).toLocaleString('en-IN') : '—'}</span>
                                     </div>
                                 </div>
 
-                                {/* Risk Meter */}
-                                <div className="risk-meter-section">
-                                    <div className="risk-meter-bar">
-                                        <div className="risk-marker" style={{ left: riskScore ? `${100 - riskScore}%` : '50%' }}></div>
-                                    </div>
-                                    <div className="risk-meter-labels">
-                                        <span>LOW</span>
-                                        <span>MEDIUM</span>
-                                        <span>HIGH</span>
-                                    </div>
-                                </div>
-
-                                {/* Recommendation */}
                                 <div className="recommendation-box">
-                                    <span className="recommendation-icon">{riskLevel === 'low' ? '✓' : riskLevel === 'high' ? '⚠' : 'ℹ'}</span>
+                                    <span className="recommendation-icon">ℹ</span>
                                     <div>
-                                        <strong>{riskLevel === 'low' ? 'Recommended for Funding' : riskLevel === 'high' ? 'Manual Review Needed' : 'Moderate Risk'}</strong>
-                                        <p>{recommendation}</p>
+                                        <strong>Waiting for Debtor Confirmation</strong>
+                                        <p>The debtor company will need to confirm this invoice before a Finance Partner can fund it.</p>
                                     </div>
                                 </div>
 
-                                {/* Actions */}
                                 <div className="risk-actions">
                                     <button className="btn-outline-action" onClick={handleBack}>
                                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                         Back
                                     </button>
                                     <button className="btn-primary" onClick={handleSubmit} disabled={submitted} style={submitted ? { background: 'var(--green)' } : {}}>
-                                        {submitted ? '✓ Submitted Successfully!' : 'Submit for Funding'}
+                                        {submitted ? '✓ Done!' : 'Go to Dashboard'}
                                         {!submitted && <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </button>
                                 </div>
@@ -429,10 +386,8 @@ export default function UploadPage() {
                         )}
                     </div>
 
-                    {/* ═══ RIGHT COLUMN ═══ */}
+                    {/* RIGHT COLUMN — Form */}
                     <div className="upload-right">
-
-                        {/* Invoice Preview / Form */}
                         <div className="card preview-card">
                             <div className="card-header">
                                 <h2 className="card-title">{createdInvoice ? 'Invoice Created' : 'Invoice Details'}</h2>
@@ -443,10 +398,12 @@ export default function UploadPage() {
                                     {[
                                         { label: 'Invoice #', value: createdInvoice.invoiceNumber },
                                         { label: 'Amount', value: `₹${parseFloat(createdInvoice.amount).toLocaleString('en-IN')}` },
-                                        { label: 'Debtor', value: createdInvoice.debtorCompany },
+                                        { label: 'Debtor', value: selectedDebtor?.company || createdInvoice.debtorCompany },
                                         { label: 'Due Date', value: new Date(createdInvoice.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) },
                                         { label: 'Terms', value: createdInvoice.paymentTerms || 'N/A' },
-                                        { label: 'Status', value: createdInvoice.status?.toUpperCase() || 'DRAFT' },
+                                        { label: 'Status', value: 'PENDING' },
+                                        { label: 'Advance (85%)', value: `₹${parseFloat(createdInvoice.advanceAmount).toLocaleString('en-IN')}` },
+                                        { label: 'Discount Fee (2%)', value: `₹${parseFloat(createdInvoice.discountFee).toLocaleString('en-IN')}` },
                                     ].map((row, i) => (
                                         <div className="preview-row" key={i}>
                                             <span className="preview-label">{row.label}</span>
@@ -463,8 +420,20 @@ export default function UploadPage() {
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Debtor Company *</label>
-                                        <input type="text" className={`form-input${fieldErrors.debtorCompany ? ' input-error' : ''}`} placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => updateField('debtorCompany', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.debtorCompany ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
-                                        {fieldErrors.debtorCompany && <span className="field-error">{fieldErrors.debtorCompany}</span>}
+                                        <select
+                                            className={`form-input${fieldErrors.debtorId ? ' input-error' : ''}`}
+                                            value={formData.debtorId}
+                                            onChange={e => handleDebtorChange(e.target.value)}
+                                            style={{ background: '#0F172A', border: fieldErrors.debtorId ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                        >
+                                            <option value="">{loadingCompanies ? 'Loading companies…' : 'Select Debtor Company'}</option>
+                                            {companies.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.company || c.name} {c.gstNumber ? `(${c.gstNumber})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {fieldErrors.debtorId && <span className="field-error">{fieldErrors.debtorId}</span>}
                                     </div>
 
                                     <div className="form-group" style={{ marginBottom: 0 }}>
@@ -503,27 +472,40 @@ export default function UploadPage() {
                                         <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Description</label>
                                         <input type="text" className="form-input" placeholder="Steel supply invoice" value={formData.description} onChange={e => updateField('description', e.target.value)} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
                                     </div>
+
+                                    {/* Advance preview */}
+                                    {formData.amount && parseFloat(formData.amount) > 0 && (
+                                        <div style={{ background: 'rgba(59,130,246,.06)', border: '1px solid rgba(59,130,246,.15)', borderRadius: '10px', padding: '14px', marginTop: '4px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                <span style={{ color: '#94A3B8', fontSize: '12px' }}>Advance Amount (85%)</span>
+                                                <span className="mono" style={{ color: '#3B82F6', fontSize: '14px', fontWeight: 600 }}>₹{(parseFloat(formData.amount) * 0.85).toLocaleString('en-IN')}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94A3B8', fontSize: '12px' }}>Discount Fee (2%)</span>
+                                                <span className="mono" style={{ color: '#F59E0B', fontSize: '14px', fontWeight: 600 }}>₹{(parseFloat(formData.amount) * 0.02).toLocaleString('en-IN')}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
 
-                        {/* How AI Scoring Works */}
+                        {/* How It Works */}
                         <div className="card scoring-card">
                             <div className="card-header">
-                                <h2 className="card-title">How AI Scoring Works</h2>
+                                <h2 className="card-title">How Circular Economy Works</h2>
                             </div>
                             <div className="scoring-factors">
                                 {[
-                                    { name: 'Debtor credit history', pct: '35%', width: '70%' },
-                                    { name: 'Payment track record', pct: '25%', width: '50%' },
-                                    { name: 'Industry risk index', pct: '20%', width: '40%' },
-                                    { name: 'Invoice validity', pct: '10%', width: '20%' },
-                                    { name: 'Days to maturity', pct: '10%', width: '20%' },
+                                    { name: '1. You upload invoice against a debtor', pct: '', width: '100%' },
+                                    { name: '2. Debtor confirms the invoice', pct: '', width: '80%' },
+                                    { name: '3. AI calculates risk score', pct: '', width: '60%' },
+                                    { name: '4. Finance Partner funds (85% advance)', pct: '', width: '40%' },
+                                    { name: '5. Debtor pays → Settlement calculated', pct: '', width: '20%' },
                                 ].map((f, i) => (
                                     <div className="factor" key={i}>
                                         <div className="factor-top">
                                             <span className="factor-name">{f.name}</span>
-                                            <span className="factor-pct mono">{f.pct}</span>
                                         </div>
                                         <div className="factor-bar">
                                             <div className="factor-fill" style={{ width: f.width }}></div>
@@ -532,7 +514,6 @@ export default function UploadPage() {
                                 ))}
                             </div>
                         </div>
-
                     </div>
                 </div>
             </main>

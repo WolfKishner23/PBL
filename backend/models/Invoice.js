@@ -19,9 +19,26 @@ const Invoice = sequelize.define('Invoice', {
             min: { args: [0], msg: 'Amount must be positive' }
         }
     },
+    // ─── Circular Economy Fields ──────────────────────────────────────────
+    creditorId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'users',
+            key: 'id'
+        }
+    },
+    debtorId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'users',
+            key: 'id'
+        }
+    },
+    // ─── Legacy fields kept for backward compatibility ────────────────────
     debtorCompany: {
-        type: DataTypes.STRING,
-        allowNull: false
+        type: DataTypes.STRING
     },
     debtorGST: {
         type: DataTypes.STRING
@@ -45,33 +62,37 @@ const Invoice = sequelize.define('Invoice', {
     pdfUrl: {
         type: DataTypes.STRING
     },
-    uploadedBy: {
+    // ─── Status Flow: pending → debtor_confirmed → funded → paid → settled
+    status: {
+        type: DataTypes.ENUM('pending', 'debtor_confirmed', 'disputed', 'funded', 'paid', 'settled'),
+        defaultValue: 'pending'
+    },
+    // ─── Finance Partner who funded ──────────────────────────────────────
+    fundedBy: {
         type: DataTypes.INTEGER,
         references: {
             model: 'users',
             key: 'id'
         }
     },
-    status: {
-        type: DataTypes.ENUM('draft', 'submitted', 'review', 'approved', 'funded', 'rejected'),
-        defaultValue: 'draft'
+    // ─── Financial Calculations ──────────────────────────────────────────
+    advanceAmount: {
+        type: DataTypes.DECIMAL(12, 2)
     },
+    discountFee: {
+        type: DataTypes.DECIMAL(12, 2)
+    },
+    // ─── Risk Assessment ─────────────────────────────────────────────────
     riskScore: {
         type: DataTypes.FLOAT
     },
-    riskLevel: {
-        type: DataTypes.ENUM('low', 'medium', 'high')
+    riskLabel: {
+        type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH')
     },
     riskDetails: {
         type: DataTypes.JSON
     },
-    approvedBy: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: 'users',
-            key: 'id'
-        }
-    },
+    // ─── Legacy fields (kept intact) ─────────────────────────────────────
     rejectionReason: {
         type: DataTypes.TEXT
     }

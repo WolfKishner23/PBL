@@ -5,7 +5,7 @@ import '../styles/auth.css';
 
 export default function RegisterPage() {
     const [step, setStep] = useState(1);
-    const [role, setRole] = useState('business');
+    const [role, setRole] = useState('company');
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [businessData, setBusinessData] = useState({ company: '', gstin: '', industry: '' });
     const [showPassword, setShowPassword] = useState(false);
@@ -111,7 +111,7 @@ export default function RegisterPage() {
     }
 
     function goToDashboard() {
-        const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
+        const roleRoutes = { company: '/dashboard', finance: '/finance', admin: '/admin' };
         navigate(roleRoutes[role] || '/dashboard');
     }
 
@@ -204,9 +204,9 @@ export default function RegisterPage() {
                             <p className="auth-subtext">Start factoring invoices in minutes</p>
 
                             <div className="role-cards">
-                                <button className={`role-card${role === 'business' ? ' selected' : ''}`} onClick={() => setRole('business')}>
+                                <button className={`role-card${role === 'company' ? ' selected' : ''}`} onClick={() => setRole('company')}>
                                     <span className="role-icon">🏢</span>
-                                    <span className="role-label">Business Owner</span>
+                                    <span className="role-label">Company</span>
                                     <span className="role-desc">Upload invoices & get funded</span>
                                 </button>
                                 <button className={`role-card${role === 'finance' ? ' selected' : ''}`} onClick={() => setRole('finance')}>

@@ -1,5 +1,5 @@
 const { validationResult, body } = require('express-validator');
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 const { sequelize } = require('../config/db');
 const axios = require('axios');
 const Invoice = require('../models/Invoice');
@@ -12,7 +12,50 @@ const generateInvoiceNumber = () => {
     return `INV-${year}-${random}`;
 };
 
-// ─── CREATE INVOICE ───────────────────────────────────────────────────────────
+// ─── RISK SCORE CALCULATION ──────────────────────────────────────────────────
+async function calculateRiskScore(invoice) {
+    let score = 50; // Base score
+    const details = { base: 50 };
+
+    // Debtor confirmed → minus 15 points (lower = better)
+    if (invoice.status === 'debtor_confirmed') {
+        score -= 15;
+        details.debtorConfirmed = -15;
+    }
+
+    // Invoice amount above 5 lakh → plus 10 points (higher risk)
+    const amount = parseFloat(invoice.amount);
+    if (amount > 500000) {
+        score += 10;
+        details.highAmount = 10;
+    }
+
+    // Debtor has previous defaults (disputed invoices) → plus 20 points
+    const defaultCount = await Invoice.count({
+        where: {
+            debtorId: invoice.debtorId,
+            status: 'disputed'
+        }
+    });
+    if (defaultCount > 0) {
+        score += 20;
+        details.previousDefaults = 20;
+        details.defaultCount = defaultCount;
+    }
+
+    // Clamp score between 0 and 100
+    score = Math.max(0, Math.min(100, score));
+
+    // Determine label
+    let label;
+    if (score <= 40) label = 'LOW';
+    else if (score <= 70) label = 'MEDIUM';
+    else label = 'HIGH';
+
+    return { score, label, details };
+}
+
+// ─── CREATE INVOICE (Creditor uploads against a Debtor) ──────────────────────
 exports.createInvoice = async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -21,33 +64,45 @@ exports.createInvoice = async (req, res) => {
         }
 
         const {
-            amount, debtorCompany, debtorGST,
+            amount, debtorId, debtorGST,
             invoiceDate, dueDate, paymentTerms, description, industry
         } = req.body;
 
+        // Validate debtor exists and is a company
+        const debtor = await User.findByPk(debtorId);
+        if (!debtor || debtor.role !== 'company') {
+            return res.status(400).json({ success: false, error: 'Invalid debtor company' });
+        }
+
+        // Cannot create invoice against yourself
+        if (parseInt(debtorId) === req.user.id) {
+            return res.status(400).json({ success: false, error: 'Cannot create invoice against yourself' });
+        }
+
         // Generate unique invoice number
         let invoiceNumber = generateInvoiceNumber();
-
-        // Ensure uniqueness
         let exists = await Invoice.findOne({ where: { invoiceNumber } });
         while (exists) {
             invoiceNumber = generateInvoiceNumber();
             exists = await Invoice.findOne({ where: { invoiceNumber } });
         }
 
-        // Create invoice in PostgreSQL
+        // Create invoice
         const invoice = await Invoice.create({
             invoiceNumber,
             amount,
-            debtorCompany,
-            debtorGST,
+            creditorId: req.user.id,
+            debtorId: parseInt(debtorId),
+            debtorCompany: debtor.company || debtor.name,
+            debtorGST: debtorGST || debtor.gstNumber,
             invoiceDate,
             dueDate,
             paymentTerms,
             description,
             industry,
-            uploadedBy: req.user.id,  // Set uploadedBy = req.user.id
-            status: 'draft'           // Set status = 'draft'
+            status: 'pending',
+            advanceAmount: parseFloat(amount) * 0.85,
+            discountFee: parseFloat(amount) * 0.02
         });
 
         res.status(201).json({ success: true, invoice });
@@ -57,39 +112,44 @@ exports.createInvoice = async (req, res) => {
     }
 };
 
-// ─── GET ALL INVOICES (Raw SQL with role-based filtering) ─────────────────────
+// ─── GET ALL INVOICES (role-based filtering) ─────────────────────────────────
 exports.getAllInvoices = async (req, res) => {
     try {
-        const { status, riskLevel, search } = req.query;
+        const { status, search, view } = req.query;
         const role = req.user.role;
         const userId = req.user.id;
 
-        // Build WHERE conditions based on role
         let conditions = [];
         let replacements = {};
 
-        // Business user → get only their invoices
-        if (role === 'business') {
-            conditions.push('i."uploadedBy" = :userId');
+        // Company user
+        if (role === 'company') {
+            if (view === 'debtor') {
+                // Invoices where I am the debtor
+                conditions.push('i."debtorId" = :userId');
+            } else if (view === 'creditor') {
+                // Invoices I uploaded as creditor
+                conditions.push('i."creditorId" = :userId');
+            } else {
+                // Default: show both
+                conditions.push('(i."creditorId" = :userId OR i."debtorId" = :userId)');
+            }
             replacements.userId = userId;
         }
-        // Finance user → get all submitted/review invoices
+        // Finance user → see debtor_confirmed invoices (ready to fund) + their funded ones
         else if (role === 'finance') {
-            conditions.push('i."status" IN (\'submitted\', \'review\', \'approved\', \'funded\')');
+            conditions.push('(i."status" = \'debtor_confirmed\' OR i."fundedBy" = :userId)');
+            replacements.userId = userId;
         }
-        // Admin → get all invoices (no role filter)
+        // Admin → see all
 
         // Optional filters
         if (status) {
             conditions.push('i."status" = :status');
             replacements.status = status;
         }
-        if (riskLevel) {
-            conditions.push('i."riskLevel" = :riskLevel');
-            replacements.riskLevel = riskLevel;
-        }
         if (search) {
-            conditions.push('(i."debtorCompany" ILIKE :search OR u."company" ILIKE :search)');
+            conditions.push('(cr."company" ILIKE :search OR db."company" ILIKE :search OR i."invoiceNumber" ILIKE :search)');
             replacements.search = `%${search}%`;
         }
 
@@ -97,11 +157,15 @@ exports.getAllInvoices = async (req, res) => {
             ? 'WHERE ' + conditions.join(' AND ')
             : '';
 
-        // ─── Raw SQL Query to demonstrate SQL knowledge ───────────────────────
         const invoices = await sequelize.query(
-            `SELECT i.*, u.name as "uploaderName", u.company as "uploaderCompany"
+            `SELECT i.*,
+                    cr.name as "creditorName", cr.company as "creditorCompany",
+                    db.name as "debtorName", db.company as "debtorCompanyName",
+                    fp.name as "funderName", fp.company as "funderCompany"
              FROM "invoices" i
-             JOIN "users" u ON i."uploadedBy" = u.id
+             JOIN "users" cr ON i."creditorId" = cr.id
+             JOIN "users" db ON i."debtorId" = db.id
+             LEFT JOIN "users" fp ON i."fundedBy" = fp.id
              ${whereClause}
              ORDER BY i."createdAt" DESC`,
             {
@@ -126,18 +190,14 @@ exports.getInvoice = async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id, {
             include: [
-                { model: User, as: 'uploader', attributes: ['id', 'name', 'email', 'company'] },
-                { model: User, as: 'approver', attributes: ['id', 'name', 'email'] }
+                { model: User, as: 'creditor', attributes: ['id', 'name', 'email', 'company'] },
+                { model: User, as: 'debtor', attributes: ['id', 'name', 'email', 'company'] },
+                { model: User, as: 'funder', attributes: ['id', 'name', 'email', 'company'] }
             ]
         });
 
         if (!invoice) {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
-        }
-
-        // Business can only see their own invoices
-        if (req.user.role === 'business' && invoice.uploadedBy !== req.user.id) {
-            return res.status(403).json({ success: false, error: 'Not authorized to view this invoice' });
         }
 
         res.json({ success: true, invoice });
@@ -156,30 +216,33 @@ exports.updateInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        // Only owner can update
-        if (invoice.uploadedBy !== req.user.id) {
+        if (invoice.creditorId !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized' });
         }
 
-        // Only if status is 'draft'
-        if (invoice.status !== 'draft') {
+        if (invoice.status !== 'pending') {
             return res.status(400).json({
                 success: false,
-                error: 'Only draft invoices can be edited'
+                error: 'Only pending invoices can be edited'
             });
         }
 
-        // Update allowed fields only
-        const { amount, debtorCompany, debtorGST, dueDate, paymentTerms, description } = req.body;
-        await invoice.update({
+        const { amount, debtorGST, dueDate, paymentTerms, description } = req.body;
+        const updates = {
             amount: amount || invoice.amount,
-            debtorCompany: debtorCompany || invoice.debtorCompany,
             debtorGST: debtorGST !== undefined ? debtorGST : invoice.debtorGST,
             dueDate: dueDate || invoice.dueDate,
             paymentTerms: paymentTerms !== undefined ? paymentTerms : invoice.paymentTerms,
             description: description !== undefined ? description : invoice.description
-        });
+        };
 
+        // Recalculate advance and fee if amount changed
+        if (amount) {
+            updates.advanceAmount = parseFloat(amount) * 0.85;
+            updates.discountFee = parseFloat(amount) * 0.02;
+        }
+
+        await invoice.update(updates);
         res.json({ success: true, invoice });
     } catch (error) {
         console.error('Update invoice error:', error);
@@ -196,16 +259,14 @@ exports.deleteInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        // Only owner can delete
-        if (invoice.uploadedBy !== req.user.id) {
+        if (invoice.creditorId !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized' });
         }
 
-        // Only if status is 'draft'
-        if (invoice.status !== 'draft') {
+        if (invoice.status !== 'pending') {
             return res.status(400).json({
                 success: false,
-                error: 'Only draft invoices can be deleted'
+                error: 'Only pending invoices can be deleted'
             });
         }
 
@@ -217,7 +278,190 @@ exports.deleteInvoice = async (req, res) => {
     }
 };
 
-// ─── SUBMIT INVOICE (+ AI Risk Scoring) ──────────────────────────────────────
+// ─── DEBTOR CONFIRMS INVOICE ─────────────────────────────────────────────────
+exports.confirmInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
+
+        // Only the debtor can confirm
+        if (invoice.debtorId !== req.user.id) {
+            return res.status(403).json({ success: false, error: 'Only the debtor can confirm this invoice' });
+        }
+
+        if (invoice.status !== 'pending') {
+            return res.status(400).json({ success: false, error: 'Only pending invoices can be confirmed' });
+        }
+
+        // Update status to debtor_confirmed
+        await invoice.update({ status: 'debtor_confirmed' });
+
+        // Calculate risk score
+        const risk = await calculateRiskScore(invoice);
+        await invoice.update({
+            riskScore: risk.score,
+            riskLabel: risk.label,
+            riskDetails: risk.details
+        });
+
+        await invoice.reload();
+
+        console.log(`✅ Invoice ${invoice.invoiceNumber} confirmed by debtor. Risk: ${risk.label} (${risk.score})`);
+
+        res.json({ success: true, invoice, riskScore: risk });
+    } catch (error) {
+        console.error('Confirm invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── DEBTOR DISPUTES INVOICE ─────────────────────────────────────────────────
+exports.disputeInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
+
+        if (invoice.debtorId !== req.user.id) {
+            return res.status(403).json({ success: false, error: 'Only the debtor can dispute this invoice' });
+        }
+
+        if (invoice.status !== 'pending') {
+            return res.status(400).json({ success: false, error: 'Only pending invoices can be disputed' });
+        }
+
+        const { reason } = req.body;
+        await invoice.update({
+            status: 'disputed',
+            rejectionReason: reason || 'Disputed by debtor'
+        });
+
+        console.log(`⚠️ Invoice ${invoice.invoiceNumber} disputed by debtor`);
+
+        res.json({ success: true, invoice });
+    } catch (error) {
+        console.error('Dispute invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── FINANCE PARTNER FUNDS INVOICE ───────────────────────────────────────────
+exports.fundInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
+
+        if (invoice.status !== 'debtor_confirmed') {
+            return res.status(400).json({
+                success: false,
+                error: 'Only debtor-confirmed invoices can be funded'
+            });
+        }
+
+        // Calculate advance and fee
+        const amount = parseFloat(invoice.amount);
+        const advanceAmount = amount * 0.85;
+        const discountFee = amount * 0.02;
+
+        await invoice.update({
+            status: 'funded',
+            fundedBy: req.user.id,
+            advanceAmount,
+            discountFee
+        });
+
+        console.log(`💰 Invoice ${invoice.invoiceNumber} funded by ${req.user.name}. Advance: ₹${advanceAmount}`);
+
+        await invoice.reload();
+        res.json({ success: true, invoice });
+    } catch (error) {
+        console.error('Fund invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── DEBTOR MARKS INVOICE AS PAID ────────────────────────────────────────────
+exports.markPaid = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
+
+        if (invoice.debtorId !== req.user.id) {
+            return res.status(403).json({ success: false, error: 'Only the debtor can mark as paid' });
+        }
+
+        if (invoice.status !== 'funded') {
+            return res.status(400).json({ success: false, error: 'Only funded invoices can be marked as paid' });
+        }
+
+        await invoice.update({ status: 'paid' });
+        console.log(`✅ Invoice ${invoice.invoiceNumber} marked as paid by debtor`);
+
+        await invoice.reload();
+        res.json({ success: true, invoice });
+    } catch (error) {
+        console.error('Mark paid error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── SETTLE INVOICE (Final settlement calculation) ───────────────────────────
+exports.settleInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
+
+        if (invoice.status !== 'paid') {
+            return res.status(400).json({ success: false, error: 'Only paid invoices can be settled' });
+        }
+
+        const amount = parseFloat(invoice.amount);
+        const advanceAmount = parseFloat(invoice.advanceAmount) || amount * 0.85;
+        const discountFee = parseFloat(invoice.discountFee) || amount * 0.02;
+
+        // Settlement: Finance partner gets back advance + discount fee
+        // Creditor gets: full amount - advance already received = remainder
+        const financeReturn = advanceAmount + discountFee;
+        const creditorRemainder = amount - advanceAmount - discountFee;
+
+        await invoice.update({ status: 'settled' });
+
+        console.log(`🏦 Invoice ${invoice.invoiceNumber} settled. FP return: ₹${financeReturn}, Creditor remainder: ₹${creditorRemainder}`);
+
+        await invoice.reload();
+        res.json({
+            success: true,
+            invoice,
+            settlement: {
+                invoiceAmount: amount,
+                advanceAmount,
+                discountFee,
+                financePartnerReturn: financeReturn,
+                creditorRemainder,
+                financePartnerProfit: discountFee
+            }
+        });
+    } catch (error) {
+        console.error('Settle invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── SUBMIT INVOICE (Legacy — triggers AI risk scoring) ──────────────────────
 exports.submitInvoice = async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id);
@@ -226,62 +470,17 @@ exports.submitInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        if (invoice.uploadedBy !== req.user.id) {
+        if (invoice.creditorId !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized' });
         }
 
-        if (invoice.status !== 'draft') {
-            return res.status(400).json({
-                success: false,
-                error: 'Only draft invoices can be submitted'
-            });
+        // For backward compatibility: auto-confirm if pending
+        if (invoice.status === 'pending') {
+            await invoice.update({ status: 'pending' });
         }
 
-        // Change status to 'submitted'
-        await invoice.update({ status: 'submitted' });
-
-        // Automatically trigger AI risk scoring
-        let riskResult = null;
-        try {
-            const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
-                invoiceData: {
-                    invoiceNumber: invoice.invoiceNumber,
-                    amount: parseFloat(invoice.amount),
-                    debtorCompany: invoice.debtorCompany,
-                    debtorGST: invoice.debtorGST,
-                    invoiceDate: invoice.invoiceDate,
-                    dueDate: invoice.dueDate,
-                    paymentTerms: invoice.paymentTerms,
-                    industry: invoice.industry
-                }
-            });
-
-            riskResult = aiResponse.data;
-
-            // Save risk score, level, details to invoice
-            await invoice.update({
-                riskScore: riskResult.riskScore,
-                riskLevel: riskResult.riskLevel,
-                riskDetails: riskResult.details,
-                status: 'review'  // Change status to 'review'
-            });
-
-            console.log(`🤖 AI Risk Score for ${invoice.invoiceNumber}: ${riskResult.riskScore} (${riskResult.riskLevel})`);
-        } catch (aiError) {
-            // AI service unavailable — still submit, just skip risk scoring
-            console.warn('⚠️  AI Service unavailable, skipping risk scoring:', aiError.message);
-            await invoice.update({ status: 'review' });
-            riskResult = { message: 'AI service unavailable, risk scoring skipped' };
-        }
-
-        // Reload invoice with updated fields
         await invoice.reload();
-
-        res.json({
-            success: true,
-            invoice,
-            riskResult
-        });
+        res.json({ success: true, invoice });
     } catch (error) {
         console.error('Submit invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
@@ -301,11 +500,10 @@ exports.uploadPDF = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        if (invoice.uploadedBy !== req.user.id) {
+        if (invoice.creditorId !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized' });
         }
 
-        // Update invoice pdfUrl
         const pdfUrl = `/uploads/${req.file.filename}`;
         await invoice.update({ pdfUrl });
 
@@ -319,6 +517,6 @@ exports.uploadPDF = async (req, res) => {
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 exports.createInvoiceValidation = [
     body('amount').isFloat({ gt: 0 }).withMessage('Amount must be a positive number'),
-    body('debtorCompany').notEmpty().withMessage('Debtor company is required'),
+    body('debtorId').isInt().withMessage('Debtor company is required'),
     body('dueDate').isISO8601().withMessage('Valid due date is required')
 ];

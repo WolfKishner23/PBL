@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
             name,
             email,
             password,
-            role: role || 'business',
+            role: role || 'company',
             company,
             gstNumber,
             industry
@@ -264,6 +264,24 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
+// ─── GET ALL COMPANIES (for debtor dropdown) ─────────────────────────────────
+exports.getCompanies = async (req, res) => {
+    try {
+        const companies = await User.findAll({
+            where: { role: 'company' },
+            attributes: ['id', 'name', 'email', 'company', 'gstNumber', 'industry']
+        });
+
+        // Exclude the requesting user from the list
+        const filtered = companies.filter(c => c.id !== req.user.id);
+
+        res.json({ success: true, companies: filtered });
+    } catch (error) {
+        console.error('Get companies error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 exports.registerValidation = [
     body('name')
@@ -276,7 +294,7 @@ exports.registerValidation = [
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
     body('role')
         .optional()
-        .isIn(['business', 'finance', 'admin']).withMessage('Role must be business, finance, or admin')
+        .isIn(['company', 'finance', 'admin']).withMessage('Role must be company, finance, or admin')
 ];
 
 exports.loginValidation = [

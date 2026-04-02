@@ -4,13 +4,17 @@ const Transaction = require('./Transaction');
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
-// User → Invoices (uploaded)
-User.hasMany(Invoice, { foreignKey: 'uploadedBy', as: 'invoices' });
-Invoice.belongsTo(User, { foreignKey: 'uploadedBy', as: 'uploader' });
+// Creditor (company who uploaded the invoice)
+User.hasMany(Invoice, { foreignKey: 'creditorId', as: 'creditorInvoices' });
+Invoice.belongsTo(User, { foreignKey: 'creditorId', as: 'creditor' });
 
-// User → Invoices (approved)
-User.hasMany(Invoice, { foreignKey: 'approvedBy', as: 'approvedInvoices' });
-Invoice.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver' });
+// Debtor (company who owes the money)
+User.hasMany(Invoice, { foreignKey: 'debtorId', as: 'debtorInvoices' });
+Invoice.belongsTo(User, { foreignKey: 'debtorId', as: 'debtor' });
+
+// Finance Partner who funded
+User.hasMany(Invoice, { foreignKey: 'fundedBy', as: 'fundedInvoices' });
+Invoice.belongsTo(User, { foreignKey: 'fundedBy', as: 'funder' });
 
 // Invoice → Transaction
 Invoice.hasOne(Transaction, { foreignKey: 'invoiceId', as: 'transaction' });
@@ -20,7 +24,7 @@ Transaction.belongsTo(Invoice, { foreignKey: 'invoiceId', as: 'invoice' });
 User.hasMany(Transaction, { foreignKey: 'financierId', as: 'fundedTransactions' });
 Transaction.belongsTo(User, { foreignKey: 'financierId', as: 'financier' });
 
-// User → Transaction (business)
+// User → Transaction (business/creditor)
 User.hasMany(Transaction, { foreignKey: 'businessId', as: 'businessTransactions' });
 Transaction.belongsTo(User, { foreignKey: 'businessId', as: 'business' });
 

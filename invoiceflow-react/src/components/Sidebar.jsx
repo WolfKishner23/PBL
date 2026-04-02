@@ -84,7 +84,7 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
 
     const userName = user?.name || localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'User');
     const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner';
+    const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Company';
     const userEmail = user?.email || 'user@invoiceflow.in';
     const businessName = user?.company || 'InvoiceFlow Business';
 

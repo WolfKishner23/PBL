@@ -49,7 +49,7 @@ exports.approveInvoice = async (req, res) => {
         });
 
         // Notify business owner
-        const businessUser = await User.findByPk(invoice.uploadedBy);
+        const businessUser = await User.findByPk(invoice.creditorId);
         if (businessUser) {
             sendInvoiceStatusEmail(businessUser, invoice, 'approved')
                 .catch(err => console.error('Email error:', err.message));
@@ -86,7 +86,7 @@ exports.rejectInvoice = async (req, res) => {
         });
 
         // Notify business owner
-        const businessUser = await User.findByPk(invoice.uploadedBy);
+        const businessUser = await User.findByPk(invoice.creditorId);
         if (businessUser) {
             sendInvoiceStatusEmail(businessUser, invoice, 'rejected')
                 .catch(err => console.error('Email error:', err.message));
@@ -120,7 +120,7 @@ exports.fundInvoice = async (req, res) => {
         const transaction = await Transaction.create({
             invoiceId: invoice.id,
             financierId: req.user.id,
-            businessId: invoice.uploadedBy,
+            businessId: invoice.creditorId,
             fundedAmount: fundedAmount || invoice.amount * 0.85,
             returnRate: returnRate || 5.0,
             status: 'active'
@@ -129,7 +129,7 @@ exports.fundInvoice = async (req, res) => {
         await invoice.update({ status: 'funded' });
 
         // Notify business owner
-        const businessUser = await User.findByPk(invoice.uploadedBy);
+        const businessUser = await User.findByPk(invoice.creditorId);
         if (businessUser) {
             sendInvoiceStatusEmail(businessUser, invoice, 'funded')
                 .catch(err => console.error('Email error:', err.message));
@@ -151,7 +151,7 @@ exports.getTransactions = async (req, res) => {
         // Filter by role
         if (req.user.role === 'finance') {
             where.financierId = req.user.id;
-        } else if (req.user.role === 'business') {
+        } else if (req.user.role === 'company') {
             where.businessId = req.user.id;
         }
 
