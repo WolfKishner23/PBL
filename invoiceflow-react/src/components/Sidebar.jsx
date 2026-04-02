@@ -82,11 +82,23 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
     const { user, logout } = useAuth();
     const items = variant === 'finance' ? financeNavItems : variant === 'admin' ? adminNavItems : navItems;
 
-    const userName = user?.name || localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'User');
-    const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner';
-    const userEmail = user?.email || 'user@invoiceflow.in';
-    const businessName = user?.company || 'InvoiceFlow Business';
+    // For admin variant, pull identity from localStorage admin session
+    const isAdminVariant = variant === 'admin';
+    const adminStoredName = localStorage.getItem('invoiceflow_admin');
+    const adminStoredRole = localStorage.getItem('invoiceflow_admin_role');
+    const adminStoredAvatar = localStorage.getItem('invoiceflow_admin_avatar');
+
+    const userName = isAdminVariant
+        ? (adminStoredName || 'Admin')
+        : (user?.name || localStorage.getItem('invoiceflow_user') || 'User');
+    const initials = isAdminVariant
+        ? (adminStoredAvatar || userName.slice(0, 2).toUpperCase())
+        : userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const userRole = isAdminVariant
+        ? (adminStoredRole || 'Administrator')
+        : (user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner');
+    const userEmail = user?.email || (isAdminVariant ? 'admin@invoiceflow.in' : 'user@invoiceflow.in');
+    const businessName = user?.company || 'InvoiceFlow';
 
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
@@ -104,8 +116,15 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
 
     function handleLogout() {
         setMenuOpen(false);
-        logout();
-        navigate('/login');
+        if (isAdminVariant) {
+            // Admin session logout — clear admin localStorage keys
+            ['invoiceflow_admin', 'invoiceflow_admin_role', 'invoiceflow_admin_avatar', 'invoiceflow_admin_color']
+                .forEach(k => localStorage.removeItem(k));
+            navigate('/admin-login');
+        } else {
+            logout();
+            navigate('/login');
+        }
     }
 
     return (
