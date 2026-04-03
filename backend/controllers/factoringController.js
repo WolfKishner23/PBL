@@ -1,6 +1,7 @@
 const Invoice = require('../models/Invoice');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const { sequelize } = require('../config/db');
 const { sendInvoiceStatusEmail } = require('../services/email');
 
 // ─── REVIEW INVOICE (Finance / Admin) ─────────────────────────────────────────
@@ -99,24 +100,33 @@ exports.rejectInvoice = async (req, res) => {
     }
 };
 
-// ─── FUND INVOICE ─────────────────────────────────────────────────────────────
+// ─── FUND INVOICE (Legacy — wrapped in DB transaction for atomicity) ──────────
 exports.fundInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { fundedAmount, returnRate } = req.body;
-        const invoice = await Invoice.findByPk(req.params.id);
+
+        // SELECT FOR UPDATE — locks the row to prevent double-funding
+        const invoice = await Invoice.findOne({
+            where: { id: req.params.id },
+            lock: t.LOCK.UPDATE,
+            transaction: t
+        });
 
         if (!invoice) {
+            await t.rollback();
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
         if (invoice.status !== 'approved') {
+            await t.rollback();
             return res.status(400).json({
                 success: false,
                 error: 'Only approved invoices can be funded'
             });
         }
 
-        // Create transaction
+        // Create transaction record AND update invoice atomically
         const transaction = await Transaction.create({
             invoiceId: invoice.id,
             financierId: req.user.id,
@@ -124,11 +134,13 @@ exports.fundInvoice = async (req, res) => {
             fundedAmount: fundedAmount || invoice.amount * 0.85,
             returnRate: returnRate || 5.0,
             status: 'active'
-        });
+        }, { transaction: t });
 
-        await invoice.update({ status: 'funded' });
+        await invoice.update({ status: 'funded', fundedAt: new Date() }, { transaction: t });
 
-        // Notify business owner
+        await t.commit();
+
+        // Notify business owner (fire-and-forget, outside transaction)
         const businessUser = await User.findByPk(invoice.creditorId);
         if (businessUser) {
             sendInvoiceStatusEmail(businessUser, invoice, 'funded')
@@ -137,6 +149,7 @@ exports.fundInvoice = async (req, res) => {
 
         res.json({ success: true, transaction, invoice });
     } catch (error) {
+        await t.rollback();
         console.error('Fund invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }

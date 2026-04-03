@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
+const logger = require('./utils/logger');
 
 // Load env vars
 dotenv.config();
@@ -52,8 +53,7 @@ app.get('/api/health', (req, res) => {
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-    console.error('❌ Error:', err.message);
-    console.error(err.stack);
+    logger.error('Unhandled error', { error: err.message, stack: err.stack, path: req.originalUrl });
 
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({
@@ -72,10 +72,10 @@ const startServer = async () => {
         await connectDB();
 
         app.listen(PORT, () => {
-            console.log(`✅ InvoiceFlow Server running on http://localhost:${PORT}`);
+            logger.info(`✅ InvoiceFlow Server running on http://localhost:${PORT}`);
         });
     } catch (error) {
-        console.error('❌ Failed to start server:', error.message);
+        logger.error('Failed to start server', { error: error.message });
         process.exit(1);
     }
 };

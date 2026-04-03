@@ -22,7 +22,7 @@ exports.assessRisk = async (req, res) => {
             invoiceDate: invoice.invoiceDate,
             dueDate: invoice.dueDate,
             paymentTerms: invoice.paymentTerms
-        });
+        }, { timeout: 5000 });
 
         const { riskScore, riskLevel, details } = response.data;
 
@@ -43,10 +43,10 @@ exports.assessRisk = async (req, res) => {
             invoice
         });
     } catch (error) {
-        if (error.code === 'ECONNREFUSED') {
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
             return res.status(503).json({
                 success: false,
-                error: 'AI Service unavailable. Please ensure the Python AI service is running on ' + AI_SERVICE_URL
+                error: 'AI Service unavailable or timed out. Please ensure the Python AI service is running on ' + AI_SERVICE_URL
             });
         }
         console.error('AI risk assessment error:', error.message);
@@ -68,7 +68,8 @@ exports.extractInvoiceData = async (req, res) => {
         formData.append('file', fs.createReadStream(req.file.path));
 
         const response = await axios.post(`${AI_SERVICE_URL}/api/extract-invoice`, formData, {
-            headers: formData.getHeaders()
+            headers: formData.getHeaders(),
+            timeout: 5000
         });
 
         res.json({
@@ -76,10 +77,12 @@ exports.extractInvoiceData = async (req, res) => {
             extractedData: response.data
         });
     } catch (error) {
-        if (error.code === 'ECONNREFUSED') {
-            return res.status(503).json({
-                success: false,
-                error: 'AI Service unavailable'
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+            // Graceful fallback — return empty data so the form still works
+            return res.json({
+                success: true,
+                extractedData: {},
+                warning: 'AI Service unavailable — fill in details manually'
             });
         }
         console.error('AI extract error:', error.message);
@@ -91,7 +94,8 @@ exports.extractInvoiceData = async (req, res) => {
 exports.getInsights = async (req, res) => {
     try {
         const response = await axios.get(`${AI_SERVICE_URL}/api/insights`, {
-            params: { userId: req.user.id }
+            params: { userId: req.user.id },
+            timeout: 5000
         });
 
         res.json({
@@ -99,10 +103,11 @@ exports.getInsights = async (req, res) => {
             insights: response.data
         });
     } catch (error) {
-        if (error.code === 'ECONNREFUSED') {
-            return res.status(503).json({
-                success: false,
-                error: 'AI Service unavailable'
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+            return res.json({
+                success: true,
+                insights: [],
+                warning: 'AI Service unavailable'
             });
         }
         console.error('AI insights error:', error.message);

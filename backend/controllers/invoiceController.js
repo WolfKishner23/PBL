@@ -4,6 +4,7 @@ const { sequelize } = require('../config/db');
 const axios = require('axios');
 const Invoice = require('../models/Invoice');
 const User = require('../models/User');
+const logger = require('../utils/logger');
 
 // ─── Generate Unique Invoice Number: INV-[YEAR]-[3 digits] ───────────────────
 const generateInvoiceNumber = () => {
@@ -107,7 +108,7 @@ exports.createInvoice = async (req, res) => {
 
         res.status(201).json({ success: true, invoice });
     } catch (error) {
-        console.error('Create invoice error:', error);
+        logger.error('Create invoice error', { error: error.message, userId: req.user.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -180,7 +181,7 @@ exports.getAllInvoices = async (req, res) => {
             invoices
         });
     } catch (error) {
-        console.error('Get all invoices error:', error);
+        logger.error('Get all invoices error', { error: error.message, userId: req.user.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -202,7 +203,7 @@ exports.getInvoice = async (req, res) => {
 
         res.json({ success: true, invoice });
     } catch (error) {
-        console.error('Get invoice error:', error);
+        logger.error('Get invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -245,7 +246,7 @@ exports.updateInvoice = async (req, res) => {
         await invoice.update(updates);
         res.json({ success: true, invoice });
     } catch (error) {
-        console.error('Update invoice error:', error);
+        logger.error('Update invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -273,47 +274,52 @@ exports.deleteInvoice = async (req, res) => {
         await invoice.destroy();
         res.json({ success: true, message: 'Invoice deleted' });
     } catch (error) {
-        console.error('Delete invoice error:', error);
+        logger.error('Delete invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 
 // ─── DEBTOR CONFIRMS INVOICE ─────────────────────────────────────────────────
 exports.confirmInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const invoice = await Invoice.findByPk(req.params.id);
+        const invoice = await Invoice.findByPk(req.params.id, { transaction: t });
 
         if (!invoice) {
+            await t.rollback();
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
         // Only the debtor can confirm
         if (invoice.debtorId !== req.user.id) {
+            await t.rollback();
             return res.status(403).json({ success: false, error: 'Only the debtor can confirm this invoice' });
         }
 
         if (invoice.status !== 'pending') {
+            await t.rollback();
             return res.status(400).json({ success: false, error: 'Only pending invoices can be confirmed' });
         }
 
-        // Update status to debtor_confirmed
-        await invoice.update({ status: 'debtor_confirmed' });
-
-        // Calculate risk score
+        // Update status + calculate risk score in a single atomic transaction
         const risk = await calculateRiskScore(invoice);
         await invoice.update({
+            status: 'debtor_confirmed',
+            confirmedAt: new Date(),
             riskScore: risk.score,
             riskLabel: risk.label,
             riskDetails: risk.details
-        });
+        }, { transaction: t });
 
+        await t.commit();
         await invoice.reload();
 
-        console.log(`✅ Invoice ${invoice.invoiceNumber} confirmed by debtor. Risk: ${risk.label} (${risk.score})`);
+        logger.info('✅ Invoice confirmed by debtor', { invoiceNumber: invoice.invoiceNumber, riskLabel: risk.label, riskScore: risk.score, debtorId: req.user.id });
 
         res.json({ success: true, invoice, riskScore: risk });
     } catch (error) {
-        console.error('Confirm invoice error:', error);
+        await t.rollback();
+        logger.error('Confirm invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -341,25 +347,33 @@ exports.disputeInvoice = async (req, res) => {
             rejectionReason: reason || 'Disputed by debtor'
         });
 
-        console.log(`⚠️ Invoice ${invoice.invoiceNumber} disputed by debtor`);
+        logger.warn('⚠️ Invoice disputed by debtor', { invoiceNumber: invoice.invoiceNumber, debtorId: req.user.id, reason: reason || 'Disputed by debtor' });
 
         res.json({ success: true, invoice });
     } catch (error) {
-        console.error('Dispute invoice error:', error);
+        logger.error('Dispute invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 
 // ─── FINANCE PARTNER FUNDS INVOICE ───────────────────────────────────────────
 exports.fundInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const invoice = await Invoice.findByPk(req.params.id);
+        // SELECT FOR UPDATE — locks this invoice row to prevent double-funding
+        const invoice = await Invoice.findOne({
+            where: { id: req.params.id },
+            lock: t.LOCK.UPDATE,
+            transaction: t
+        });
 
         if (!invoice) {
+            await t.rollback();
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
         if (invoice.status !== 'debtor_confirmed') {
+            await t.rollback();
             return res.status(400).json({
                 success: false,
                 error: 'Only debtor-confirmed invoices can be funded'
@@ -374,16 +388,20 @@ exports.fundInvoice = async (req, res) => {
         await invoice.update({
             status: 'funded',
             fundedBy: req.user.id,
+            fundedAt: new Date(),
             advanceAmount,
             discountFee
-        });
+        }, { transaction: t });
 
-        console.log(`💰 Invoice ${invoice.invoiceNumber} funded by ${req.user.name}. Advance: ₹${advanceAmount}`);
+        await t.commit();
+
+        logger.info('💰 Invoice funded', { invoiceNumber: invoice.invoiceNumber, fundedBy: req.user.id, advanceAmount, discountFee });
 
         await invoice.reload();
         res.json({ success: true, invoice });
     } catch (error) {
-        console.error('Fund invoice error:', error);
+        await t.rollback();
+        logger.error('Fund invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -405,27 +423,30 @@ exports.markPaid = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Only funded invoices can be marked as paid' });
         }
 
-        await invoice.update({ status: 'paid' });
-        console.log(`✅ Invoice ${invoice.invoiceNumber} marked as paid by debtor`);
+        await invoice.update({ status: 'paid', paidAt: new Date() });
+        logger.info('✅ Invoice marked as paid', { invoiceNumber: invoice.invoiceNumber, debtorId: req.user.id });
 
         await invoice.reload();
         res.json({ success: true, invoice });
     } catch (error) {
-        console.error('Mark paid error:', error);
+        logger.error('Mark paid error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
 
 // ─── SETTLE INVOICE (Final settlement calculation) ───────────────────────────
 exports.settleInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const invoice = await Invoice.findByPk(req.params.id);
+        const invoice = await Invoice.findByPk(req.params.id, { transaction: t });
 
         if (!invoice) {
+            await t.rollback();
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
         if (invoice.status !== 'paid') {
+            await t.rollback();
             return res.status(400).json({ success: false, error: 'Only paid invoices can be settled' });
         }
 
@@ -438,9 +459,11 @@ exports.settleInvoice = async (req, res) => {
         const financeReturn = advanceAmount + discountFee;
         const creditorRemainder = amount - advanceAmount - discountFee;
 
-        await invoice.update({ status: 'settled' });
+        await invoice.update({ status: 'settled', settledAt: new Date() }, { transaction: t });
 
-        console.log(`🏦 Invoice ${invoice.invoiceNumber} settled. FP return: ₹${financeReturn}, Creditor remainder: ₹${creditorRemainder}`);
+        await t.commit();
+
+        logger.info('🏦 Invoice settled', { invoiceNumber: invoice.invoiceNumber, financeReturn, creditorRemainder, profit: discountFee });
 
         await invoice.reload();
         res.json({
@@ -456,7 +479,8 @@ exports.settleInvoice = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Settle invoice error:', error);
+        await t.rollback();
+        logger.error('Settle invoice error', { error: error.message, invoiceId: req.params.id });
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };

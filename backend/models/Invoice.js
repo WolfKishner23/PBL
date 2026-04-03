@@ -95,6 +95,19 @@ const Invoice = sequelize.define('Invoice', {
     // ─── Legacy fields (kept intact) ─────────────────────────────────────
     rejectionReason: {
         type: DataTypes.TEXT
+    },
+    // ─── Lifecycle Timestamps ────────────────────────────────────────────
+    confirmedAt: {
+        type: DataTypes.DATE
+    },
+    fundedAt: {
+        type: DataTypes.DATE
+    },
+    paidAt: {
+        type: DataTypes.DATE
+    },
+    settledAt: {
+        type: DataTypes.DATE
     }
 }, {
     timestamps: true,
