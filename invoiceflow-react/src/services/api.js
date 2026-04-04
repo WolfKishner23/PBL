@@ -17,15 +17,19 @@ API.interceptors.request.use((config) => {
     return config;
 });
 
-// Redirect to /login on 401 responses
+// Redirect to /login on 401 responses (skip for admin pages which use localStorage auth)
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            localStorage.removeItem('invoiceflow_token');
-            localStorage.removeItem('invoiceflow_user');
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+            const path = window.location.pathname;
+            const isAdminPage = path.startsWith('/admin');
+            if (!isAdminPage) {
+                localStorage.removeItem('invoiceflow_token');
+                localStorage.removeItem('invoiceflow_user');
+                if (path !== '/login') {
+                    window.location.href = '/login';
+                }
             }
         }
         return Promise.reject(error);

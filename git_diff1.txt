@@ -1,0 +1,12 @@
+﻿ee09f80 Merge remote: resolved conflicts, restored route files, added admin login features
+6b372cc Merge pull request #2 from WolfKishner23/Shrawani
+1ba4b26 Phase 1-7 FinTech Audit Fixes: transactions, row locking, idempotency, timeouts, caching, Winston logging, Docker
+25157e9 feat: Circular Economy Model - creditor/debtor invoice flow, AI risk scoring, settlement engine
+8993a64 Admin dashboard
+7c11a12 Merge pull request #1 from WolfKishner23/Shrawani
+69bd629 shravani changes
+87f9879 feat: Finance and Business dashboard fixes plus AI extractor improvements
+d687042 fix: Remove invalid plan:free from static site service
+ac1924f fix: Use static URLs in render.yaml instead of unsupported fromService url property
+f9b4df7 feat: Add cloud deployment support - Render.yaml blueprint, configurable API URLs, CORS updates
+4355833 feat: Add legal pages, sidebar profile dropdown, input validations & visual enhancements

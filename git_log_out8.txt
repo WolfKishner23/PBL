@@ -1,0 +1,5 @@
+﻿ee09f80 Merge remote: resolved conflicts, restored route files, added admin login features
+6b372cc Merge pull request #2 from WolfKishner23/Shrawani
+1ba4b26 Phase 1-7 FinTech Audit Fixes: transactions, row locking, idempotency, timeouts, caching, Winston logging, Docker
+25157e9 feat: Circular Economy Model - creditor/debtor invoice flow, AI risk scoring, settlement engine
+8993a64 Admin dashboard
