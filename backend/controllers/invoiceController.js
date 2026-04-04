@@ -22,7 +22,7 @@ exports.createInvoice = async (req, res) => {
 
         const {
             amount, debtorCompany, debtorGST,
-            invoiceDate, dueDate, paymentTerms, description
+            invoiceDate, dueDate, paymentTerms, description, industry
         } = req.body;
 
         // Generate unique invoice number
@@ -45,6 +45,7 @@ exports.createInvoice = async (req, res) => {
             dueDate,
             paymentTerms,
             description,
+            industry,
             uploadedBy: req.user.id,  // Set uploadedBy = req.user.id
             status: 'draft'           // Set status = 'draft'
         });
@@ -250,7 +251,8 @@ exports.submitInvoice = async (req, res) => {
                     debtorGST: invoice.debtorGST,
                     invoiceDate: invoice.invoiceDate,
                     dueDate: invoice.dueDate,
-                    paymentTerms: invoice.paymentTerms
+                    paymentTerms: invoice.paymentTerms,
+                    industry: invoice.industry
                 }
             });
 

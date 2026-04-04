@@ -4,9 +4,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin — InvoiceFlow</title>
-    <meta name="description"
-        content="InvoiceFlow Admin Dashboard — manage users, monitor analytics, and track system health." />
+    <title>Admin Dashboard — InvoiceFlow</title>
+    <meta name="description" content="InvoiceFlow Admin Dashboard — manage users, monitor analytics, and track all transactions." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,6 +13,164 @@
         rel="stylesheet" />
     <link rel="stylesheet" href="dashboard.css" />
     <link rel="stylesheet" href="admin.css" />
+    <style>
+        /* ── ADMIN PORTAL EXTRAS ── */
+        .admin-name-highlight {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ── TRANSACTIONS TABLE ── */
+        .txn-amount { font-family: var(--font-mono); font-weight: 700; }
+        .txn-amount.credit { color: var(--green); }
+        .txn-amount.debit  { color: var(--red); }
+        .txn-status { display: inline-flex; align-items: center; gap: 5px; }
+
+        /* ── FINANCE / BUSINESS CARDS ── */
+        .user-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 24px;
+        }
+        .user-overview-card {
+            background: rgba(255,255,255,.02);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            transition: border-color .25s var(--ease), transform .2s var(--ease);
+            animation: cardFadeIn .4s var(--ease) both;
+            position: relative;
+            overflow: hidden;
+        }
+        .user-overview-card:hover {
+            border-color: rgba(255,255,255,.12);
+            transform: translateY(-2px);
+        }
+        .user-overview-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+        }
+        .uoc-finance::before { background: linear-gradient(90deg, var(--purple), var(--blue)); }
+        .uoc-business::before { background: linear-gradient(90deg, var(--blue), var(--green)); }
+
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .uoc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .uoc-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 12px; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .uoc-name { font-weight: 600; font-size: 14px; color: var(--white); }
+        .uoc-email { font-size: 11px; color: var(--gray-400); font-family: var(--font-mono); margin-top: 2px; }
+        .uoc-meta {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-dim);
+        }
+        .uoc-pill {
+            font-size: 11px; font-family: var(--font-mono);
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--border-dim);
+            border-radius: 20px;
+            padding: 3px 10px;
+            color: var(--gray-300);
+        }
+        .uoc-pill.highlight { color: var(--green); border-color: rgba(34,197,94,.2); background: rgba(34,197,94,.06); }
+
+        /* ── TRANSACTIONS ── */
+        .txn-wrap { padding: 0 0 8px; }
+        .txn-filter-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 16px 24px 12px;
+            flex-wrap: wrap;
+        }
+        .txn-filter-btn {
+            font-family: var(--font-head);
+            font-size: 12px; font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-dim);
+            background: rgba(255,255,255,.03);
+            color: var(--gray-400);
+            cursor: pointer;
+            transition: all .2s var(--ease);
+        }
+        .txn-filter-btn:hover { color: var(--white); border-color: rgba(255,255,255,.15); }
+        .txn-filter-btn.active {
+            background: rgba(99,102,241,.12);
+            border-color: rgba(99,102,241,.4);
+            color: #a5b4fc;
+        }
+        .txn-search-wrap {
+            margin-left: auto;
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px;
+            padding: 6px 12px;
+        }
+        .txn-search-wrap input {
+            background: none; border: none; outline: none;
+            color: var(--white); font-family: var(--font-head);
+            font-size: 13px; width: 180px;
+        }
+        .txn-search-wrap input::placeholder { color: var(--gray-400); }
+
+        /* ── LOGOUT BUTTON ── */
+        .btn-logout {
+            font-family: var(--font-head);
+            font-size: 12px; font-weight: 600;
+            color: var(--red);
+            background: rgba(239,68,68,.08);
+            border: 1px solid rgba(239,68,68,.2);
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all .2s var(--ease);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-logout:hover {
+            background: rgba(239,68,68,.16);
+            border-color: rgba(239,68,68,.4);
+            transform: translateY(-1px);
+        }
+
+        /* ── WELCOME BANNER ── */
+        .admin-welcome-banner {
+            margin: 0 0 20px;
+            background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(168,85,247,.08));
+            border: 1px solid rgba(99,102,241,.2);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .awb-avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 13px; font-weight: 700;
+            flex-shrink: 0;
+            border: 2px solid rgba(99,102,241,.4);
+        }
+        .awb-text h3 { font-size: 14px; font-weight: 700; }
+        .awb-text p  { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+        /* ── FULL-WIDTH TAB SECTION ── */
+        .admin-tab-wrapper { padding: 20px 24px 24px; }
+    </style>
 </head>
 
 <body>
@@ -38,53 +195,37 @@
                     </svg>
                     Admin
                 </a>
-                <a href="#" class="nav-item" data-section="users">
+                <a href="dashboard.html" class="nav-item" data-section="dashboard">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
-                        <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5"
-                            stroke-linecap="round" />
+                        <path d="M3 10.5L10 3l7 7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M5 9v8h10V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
-                    Users
+                    Dashboard
                 </a>
-                <a href="#" class="nav-item" data-section="invoices">
+                <a href="finance.html" class="nav-item" data-section="finance">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4-.9 4-2"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Finance
+                </a>
+                <a href="upload.html" class="nav-item" data-section="invoices">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
                         <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
                     </svg>
                     Invoices
                 </a>
-                <a href="#" class="nav-item" data-section="analytics">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="3" y="10" width="3" height="7" rx="1" stroke="currentColor" stroke-width="1.3" />
-                        <rect x="8.5" y="6" width="3" height="11" rx="1" stroke="currentColor" stroke-width="1.3" />
-                        <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.3" />
-                    </svg>
-                    Analytics
-                </a>
-                <a href="#" class="nav-item" data-section="settings">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
-                        <path
-                            d="M10 2v2m0 12v2M2 10h2m12 0h2M4.2 4.2l1.4 1.4m8.8 8.8l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                    </svg>
-                    Settings
-                </a>
             </nav>
         </div>
         <div class="sidebar-bottom">
             <hr class="sidebar-divider" />
-            <div class="user-card">
-                <div class="user-avatar admin-avatar">SU</div>
+            <div class="user-card" id="sidebarUserCard">
+                <div class="user-avatar admin-avatar" id="sidebarAvatar">AD</div>
                 <div class="user-info">
-                    <span class="user-name">Super Admin</span>
-                    <span class="user-role">System Admin</span>
+                    <span class="user-name" id="sidebarName">Admin</span>
+                    <span class="user-role" id="sidebarRole">Administrator</span>
                 </div>
-                <svg class="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="3" r="1.2" fill="currentColor" />
-                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
-                    <circle cx="8" cy="13" r="1.2" fill="currentColor" />
-                </svg>
             </div>
         </div>
     </aside>
@@ -97,13 +238,12 @@
             <div class="header-left">
                 <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5"
-                            stroke-linecap="round" />
+                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                     </svg>
                 </button>
                 <div>
-                    <h1 class="header-greeting">Admin Dashboard</h1>
-                    <p class="header-date">Platform management & monitoring</p>
+                    <h1 class="header-greeting" id="headerGreeting">Admin Dashboard</h1>
+                    <p class="header-date" id="headerSub">Platform management &amp; monitoring</p>
                 </div>
             </div>
             <div class="header-right">
@@ -111,21 +251,11 @@
                     <span class="status-dot green"></span>
                     <span class="status-text">All Systems Operational</span>
                 </div>
-                <div class="search-box" id="searchBox">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
-                        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <button class="btn-logout" id="logoutBtn">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M5 1H2a1 1 0 00-1 1v10a1 1 0 001 1h3M9 10l4-3-4-3M13 7H5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <input type="text" placeholder="Search users…" id="searchInput" />
-                </div>
-                <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path
-                            d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z"
-                            stroke="currentColor" stroke-width="1.5" />
-                        <path d="M8 15a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                    </svg>
-                    <span class="notification-dot"></span>
+                    Logout
                 </button>
             </div>
         </header>
@@ -134,21 +264,20 @@
         <section class="stat-cards" id="statCards">
             <div class="stat-card" data-accent="blue">
                 <div class="stat-card-top">
-                    <span class="stat-card-label">Total Users</span>
+                    <span class="stat-card-label">Total Customers</span>
                     <div class="stat-card-icon blue">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
-                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5"
-                                stroke-linecap="round" />
+                            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
                     </div>
                 </div>
-                <span class="stat-card-value" data-count="2412">2,412</span>
+                <span class="stat-card-value">2,412</span>
                 <span class="stat-card-trend up">↑ 124 this month</span>
             </div>
             <div class="stat-card" data-accent="green">
                 <div class="stat-card-top">
-                    <span class="stat-card-label">Invoice Volume</span>
+                    <span class="stat-card-label">Total Transactions</span>
                     <div class="stat-card-icon green">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4-.9 4-2"
@@ -156,252 +285,132 @@
                         </svg>
                     </div>
                 </div>
-                <span class="stat-card-value">₹24Cr</span>
-                <span class="stat-card-trend up">↑ this month</span>
+                <span class="stat-card-value">₹48.6Cr</span>
+                <span class="stat-card-trend up">↑ 18% this quarter</span>
             </div>
             <div class="stat-card" data-accent="amber">
                 <div class="stat-card-top">
-                    <span class="stat-card-label">Approval Rate</span>
+                    <span class="stat-card-label">Finance Partners</span>
                     <div class="stat-card-icon amber">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M3 8l4 4 6-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" />
+                            <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M2 8h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
                         </svg>
                     </div>
                 </div>
-                <span class="stat-card-value">74%</span>
+                <span class="stat-card-value">38</span>
+                <span class="stat-card-trend up">↑ 6 new this month</span>
             </div>
             <div class="stat-card" data-accent="purple">
                 <div class="stat-card-top">
-                    <span class="stat-card-label">Default Rate</span>
+                    <span class="stat-card-label">Business Owners</span>
                     <div class="stat-card-icon purple">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3-4.9-2.6L5.1 18l.9-5.3-4-3.9 5.5-.8L10 2z"
-                                stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                            <rect x="3" y="7" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M7 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
                     </div>
                 </div>
-                <span class="stat-card-value">1.2%</span>
-                <span class="stat-card-trend down">↓ 0.3% vs last month</span>
+                <span class="stat-card-value">186</span>
+                <span class="stat-card-trend up">↑ 22 this month</span>
             </div>
         </section>
 
         <!-- ─── MAIN TABS ─── -->
         <section class="card admin-content-card" id="adminContent">
+
+            <!-- Welcome Banner -->
+            <div class="admin-tab-wrapper" style="padding-bottom:0;">
+                <div class="admin-welcome-banner" id="welcomeBanner">
+                    <div class="awb-avatar" id="bannerAvatar">AD</div>
+                    <div class="awb-text">
+                        <h3>Welcome back, <span id="bannerName" class="admin-name-highlight">Admin</span>!</h3>
+                        <p id="bannerRole">You have full access to manage users, finance partners and all transactions.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="admin-tabs-bar">
                 <div class="admin-tabs" id="adminTabs">
-                    <button class="admin-tab active" data-tab="users">
+                    <button class="admin-tab active" data-tab="finance">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <circle cx="8" cy="5.5" r="3" stroke="currentColor" stroke-width="1.3" />
-                            <path d="M2.5 14c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5" stroke="currentColor"
-                                stroke-width="1.3" stroke-linecap="round" />
+                            <rect x="1.5" y="3" width="13" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                            <path d="M1.5 6h13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
                         </svg>
-                        Users
+                        Finance Partners
                     </button>
-                    <button class="admin-tab" data-tab="analytics">
+                    <button class="admin-tab" data-tab="business">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <rect x="2" y="8" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.2" />
-                            <rect x="6.5" y="4" width="3" height="10" rx="1" stroke="currentColor" stroke-width="1.2" />
-                            <rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" stroke-width="1.2" />
+                            <rect x="2" y="6" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                            <path d="M5.5 6V4.5a2.5 2.5 0 015 0V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
                         </svg>
-                        Analytics
+                        Business Owners
+                    </button>
+                    <button class="admin-tab" data-tab="transactions">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M2 5h12M2 8h8M2 11h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <path d="M12 10l2 2-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        All Transactions
                     </button>
                     <button class="admin-tab" data-tab="health">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <rect x="1.5" y="4" width="13" height="8" rx="2" stroke="currentColor" stroke-width="1.3" />
                             <circle cx="5" cy="8" r="1" fill="currentColor" />
-                            <path d="M8 6v4M10 6v4M12 6v4" stroke="currentColor" stroke-width="1"
-                                stroke-linecap="round" />
+                            <path d="M8 6v4M10 6v4M12 6v4" stroke="currentColor" stroke-width="1" stroke-linecap="round" />
                         </svg>
                         System Health
                     </button>
                 </div>
             </div>
 
-            <!-- ═══ TAB 1 — USERS TABLE ═══ -->
-            <div class="tab-panel" id="tabUsers">
-                <div class="table-scroll">
-                    <table class="invoice-table admin-table" id="adminTable">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Invoices</th>
-                                <th>Joined</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <div class="user-cell">
-                                        <div class="table-avatar blue">RN</div>
-                                        <span class="table-user-name">Rohan Natekar</span>
-                                    </div>
-                                </td>
-                                <td class="td-email">rohan@tatasteel.com</td>
-                                <td><span class="badge role-business">Business</span></td>
-                                <td><span class="badge status-active">Active</span></td>
-                                <td class="td-amount">12</td>
-                                <td>Jan 5</td>
-                                <td class="td-actions-admin">
-                                    <button class="btn-icon-action view" aria-label="View user">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
-                                                stroke="currentColor" stroke-width="1.3" />
-                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="user-cell">
-                                        <div class="table-avatar green">KL</div>
-                                        <span class="table-user-name">Krishna Lavhe</span>
-                                    </div>
-                                </td>
-                                <td class="td-email">krishna@financepro.in</td>
-                                <td><span class="badge role-finance">Finance</span></td>
-                                <td><span class="badge status-active">Active</span></td>
-                                <td class="td-amount">—</td>
-                                <td>Jan 8</td>
-                                <td class="td-actions-admin">
-                                    <button class="btn-icon-action view" aria-label="View user">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
-                                                stroke="currentColor" stroke-width="1.3" />
-                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="user-cell">
-                                        <div class="table-avatar red">SK</div>
-                                        <span class="table-user-name">Shravani Kotawar</span>
-                                    </div>
-                                </td>
-                                <td class="td-email">shravani@wipro.com</td>
-                                <td><span class="badge role-business">Business</span></td>
-                                <td><span class="badge status-suspended">Suspended</span></td>
-                                <td class="td-amount">3</td>
-                                <td>Jan 12</td>
-                                <td class="td-actions-admin">
-                                    <button class="btn-icon-action view" aria-label="View user">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
-                                                stroke="currentColor" stroke-width="1.3" />
-                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-restore" aria-label="Restore user">Restore</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="user-cell">
-                                        <div class="table-avatar amber">CR</div>
-                                        <span class="table-user-name">Chaitanya Ranade</span>
-                                    </div>
-                                </td>
-                                <td class="td-email">chaitanya@hdfc.com</td>
-                                <td><span class="badge role-business">Business</span></td>
-                                <td><span class="badge status-active">Active</span></td>
-                                <td class="td-amount">7</td>
-                                <td>Jan 15</td>
-                                <td class="td-actions-admin">
-                                    <button class="btn-icon-action view" aria-label="View user">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
-                                                stroke="currentColor" stroke-width="1.3" />
-                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="user-cell">
-                                        <div class="table-avatar purple">RN</div>
-                                        <span class="table-user-name">Rohan Natekar</span>
-                                    </div>
-                                </td>
-                                <td class="td-email">rohan@capitalfund.in</td>
-                                <td><span class="badge role-finance">Finance</span></td>
-                                <td><span class="badge status-active">Active</span></td>
-                                <td class="td-amount">—</td>
-                                <td>Jan 18</td>
-                                <td class="td-actions-admin">
-                                    <button class="btn-icon-action view" aria-label="View user">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"
-                                                stroke="currentColor" stroke-width="1.3" />
-                                            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-suspend" aria-label="Suspend user">Suspend</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- ═══ TAB 1 — FINANCE PARTNERS ═══ -->
+            <div class="tab-panel" id="tabFinance">
+                <div class="user-overview-grid" id="financeGrid"></div>
             </div>
 
-            <!-- ═══ TAB 2 — ANALYTICS ═══ -->
-            <div class="tab-panel" id="tabAnalytics" style="display:none;">
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <div class="analytics-card-top">
-                            <span class="analytics-label">Invoice Volume by Month</span>
-                            <span class="badge risk-low" style="font-size:10px;">↑ 18%</span>
-                        </div>
-                        <span class="analytics-value mono">₹3.2Cr</span>
-                        <div class="analytics-bar-track">
-                            <div class="analytics-bar-fill green" style="width:78%"></div>
-                        </div>
-                    </div>
-                    <div class="analytics-card">
-                        <div class="analytics-card-top">
-                            <span class="analytics-label">Average Risk Score</span>
-                            <span class="badge risk-low" style="font-size:10px;">↑ 5pts</span>
-                        </div>
-                        <span class="analytics-value mono">72<span class="analytics-sub">/100</span></span>
-                        <div class="analytics-bar-track">
-                            <div class="analytics-bar-fill blue" style="width:72%"></div>
+            <!-- ═══ TAB 2 — BUSINESS OWNERS ═══ -->
+            <div class="tab-panel" id="tabBusiness" style="display:none;">
+                <div class="user-overview-grid" id="businessGrid"></div>
+            </div>
+
+            <!-- ═══ TAB 3 — ALL TRANSACTIONS ═══ -->
+            <div class="tab-panel" id="tabTransactions" style="display:none;">
+                <div class="txn-wrap">
+                    <div class="txn-filter-bar">
+                        <button class="txn-filter-btn active" data-filter="all">All</button>
+                        <button class="txn-filter-btn" data-filter="funded">Funded</button>
+                        <button class="txn-filter-btn" data-filter="pending">Pending</button>
+                        <button class="txn-filter-btn" data-filter="rejected">Rejected</button>
+                        <div class="txn-search-wrap">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
+                                <path d="M9 9l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            </svg>
+                            <input type="text" id="txnSearch" placeholder="Search transactions…" />
                         </div>
                     </div>
-                    <div class="analytics-card">
-                        <div class="analytics-card-top">
-                            <span class="analytics-label">Time to Fund</span>
-                            <span class="badge risk-low" style="font-size:10px;">↓ 4hrs</span>
-                        </div>
-                        <span class="analytics-value mono">36<span class="analytics-sub">hrs</span></span>
-                        <div class="analytics-bar-track">
-                            <div class="analytics-bar-fill amber" style="width:45%"></div>
-                        </div>
-                    </div>
-                    <div class="analytics-card">
-                        <div class="analytics-card-top">
-                            <span class="analytics-label">Finance Partner ROI</span>
-                            <span class="badge risk-low" style="font-size:10px;">↑ 0.2%</span>
-                        </div>
-                        <span class="analytics-value mono">3.4<span class="analytics-sub">%</span></span>
-                        <div class="analytics-bar-track">
-                            <div class="analytics-bar-fill purple" style="width:68%"></div>
-                        </div>
+                    <div class="table-scroll">
+                        <table class="invoice-table admin-table" id="txnTable">
+                            <thead>
+                                <tr>
+                                    <th>Txn ID</th>
+                                    <th>Customer</th>
+                                    <th>Finance Partner</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Risk Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="txnTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ═══ TAB 3 — SYSTEM HEALTH ═══ -->
+            <!-- ═══ TAB 4 — SYSTEM HEALTH ═══ -->
             <div class="tab-panel" id="tabHealth" style="display:none;">
                 <div class="health-grid">
                     <div class="health-card healthy">
@@ -460,7 +469,221 @@
     </main>
 
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <script src="admin.js"></script>
+
+    <script>
+    /* ══════════════════════════════════════════════════
+       InvoiceFlow — Admin Dashboard Logic
+    ══════════════════════════════════════════════════ */
+
+    /* ─── Guard: redirect if not logged in ─── */
+    const adminName  = localStorage.getItem('invoiceflow_admin');
+    const adminRole  = localStorage.getItem('invoiceflow_admin_role')  || 'Administrator';
+    const adminAvatarTxt = localStorage.getItem('invoiceflow_admin_avatar') || 'AD';
+    const adminColor = localStorage.getItem('invoiceflow_admin_color') || 'av-blue';
+
+    if (!adminName) {
+        window.location.href = 'admin-login.html';
+    }
+
+    /* ─── Personalise UI ─── */
+    document.getElementById('headerGreeting').textContent = `Welcome, ${adminName}`;
+    document.getElementById('headerSub').textContent = `${adminRole} · Full platform access`;
+    document.getElementById('sidebarAvatar').textContent = adminAvatarTxt;
+    document.getElementById('sidebarName').textContent = adminName;
+    document.getElementById('sidebarRole').textContent = adminRole;
+    document.getElementById('bannerAvatar').textContent = adminAvatarTxt;
+    document.getElementById('bannerName').textContent = adminName;
+    document.getElementById('bannerRole').textContent = `Logged in as ${adminRole}. You can see all Finance partners, Business owners and Transactions.`;
+
+    /* Color banner avatar */
+    const colorMap = {
+        'av-pink':  'linear-gradient(135deg,#ec4899,#a855f7)',
+        'av-blue':  'linear-gradient(135deg,#3B82F6,#6366f1)',
+        'av-green': 'linear-gradient(135deg,#22c55e,#16a34a)',
+        'av-amber': 'linear-gradient(135deg,#f59e0b,#ef4444)'
+    };
+    document.getElementById('bannerAvatar').style.background = colorMap[adminColor] || colorMap['av-blue'];
+
+    /* ─── FINANCE PARTNERS DATA ─── */
+    const FINANCE_PARTNERS = [
+        { name: 'HDFC Bank Ltd', email: 'credit@hdfc.com',       portfolio: '₹12.4Cr', roi: '3.8%',  status: 'Active',   invoices: 48, joined: 'Jan 3' },
+        { name: 'ICICI Ventures',email: 'deals@icici.com',        portfolio: '₹9.1Cr',  roi: '4.1%',  status: 'Active',   invoices: 31, joined: 'Jan 7' },
+        { name: 'CapitalFund IN', email: 'rohan@capitalfund.in',  portfolio: '₹6.8Cr',  roi: '3.5%',  status: 'Active',   invoices: 22, joined: 'Jan 18' },
+        { name: 'Aditya Birla FC',email: 'aditya@abfinance.com',  portfolio: '₹5.3Cr',  roi: '3.2%',  status: 'Active',   invoices: 17, joined: 'Feb 2' },
+        { name: 'Axis Growth Cap',email: 'growth@axis.com',       portfolio: '₹4.7Cr',  roi: '2.9%',  status: 'Paused',   invoices: 12, joined: 'Feb 10' },
+        { name: 'FinancePro IN',  email: 'krishna@financepro.in', portfolio: '₹3.9Cr',  roi: '3.6%',  status: 'Active',   invoices: 19, joined: 'Jan 8' },
+        { name: 'Kotak AIF',      email: 'aif@kotak.com',         portfolio: '₹7.2Cr',  roi: '4.0%',  status: 'Active',   invoices: 27, joined: 'Jan 22' },
+        { name: 'Bajaj Finserv',  email: 'trade@bajaj.com',       portfolio: '₹2.1Cr',  roi: '2.4%',  status: 'Inactive', invoices: 5,  joined: 'Mar 1' },
+    ];
+
+    /* ─── BUSINESS OWNERS DATA ─── */
+    const BUSINESS_OWNERS = [
+        { name: 'Rohan Natekar',    email: 'rohan@tatasteel.com',   company: 'Tata Steel Ltd',        invoices: 12, funded: '₹4.8L',  status: 'Active' },
+        { name: 'Shravani Kotawar', email: 'shravani@wipro.com',    company: 'Wipro Technologies',    invoices: 3,  funded: '₹1.2L',  status: 'Suspended' },
+        { name: 'Chaitanya Ranade', email: 'chaitanya@hdfc.com',    company: 'HDFC Merchants',        invoices: 7,  funded: '₹3.1L',  status: 'Active' },
+        { name: 'Priya Sharma',     email: 'priya@infosys.com',     company: 'Infosys BPO',           invoices: 9,  funded: '₹6.4L',  status: 'Active' },
+        { name: 'Amit Patel',       email: 'amit@mahindra.com',     company: 'Mahindra Agri',         invoices: 15, funded: '₹8.9L',  status: 'Active' },
+        { name: 'Sneha Kulkarni',   email: 'sneha@reliance.com',    company: 'Reliance Retail',       invoices: 6,  funded: '₹2.7L',  status: 'Active' },
+        { name: 'Vikram Desai',     email: 'vikram@bajaj.com',      company: 'Bajaj Auto Ancillary',  invoices: 4,  funded: '₹1.5L',  status: 'Active' },
+        { name: 'Neha Joshi',       email: 'neha@startupind.com',   company: 'StartupInd Pvt Ltd',    invoices: 2,  funded: '₹0.8L',  status: 'Inactive' },
+        { name: 'Rajesh Kumar',     email: 'rajesh@msme.in',        company: 'Kumar MSME Works',      invoices: 11, funded: '₹5.2L',  status: 'Active' },
+        { name: 'Ananya Singh',     email: 'ananya@textiles.com',   company: 'Singh Textiles Pvt',    invoices: 8,  funded: '₹4.0L',  status: 'Active' },
+    ];
+
+    /* ─── ALL TRANSACTIONS DATA ─── */
+    const TRANSACTIONS = [
+        { id: 'TXN-001', customer: 'Rohan Natekar',    partner: 'HDFC Bank Ltd',    amount: '₹4,85,000', type: 'Funded',   status: 'Completed', date: 'Jan 12', risk: 88 },
+        { id: 'TXN-002', customer: 'Priya Sharma',      partner: 'ICICI Ventures',   amount: '₹2,10,000', type: 'Funded',   status: 'Completed', date: 'Jan 15', risk: 79 },
+        { id: 'TXN-003', customer: 'Amit Patel',        partner: 'CapitalFund IN',   amount: '₹6,50,000', type: 'Funded',   status: 'Completed', date: 'Jan 18', risk: 91 },
+        { id: 'TXN-004', customer: 'Shravani Kotawar',  partner: 'FinancePro IN',    amount: '₹1,20,000', type: 'Pending',  status: 'Pending',   date: 'Jan 20', risk: 62 },
+        { id: 'TXN-005', customer: 'Chaitanya Ranade',  partner: 'Kotak AIF',        amount: '₹3,10,000', type: 'Funded',   status: 'Completed', date: 'Jan 22', risk: 84 },
+        { id: 'TXN-006', customer: 'Sneha Kulkarni',    partner: 'Aditya Birla FC',  amount: '₹2,70,000', type: 'Funded',   status: 'Completed', date: 'Jan 25', risk: 76 },
+        { id: 'TXN-007', customer: 'Vikram Desai',      partner: 'Axis Growth Cap',  amount: '₹1,50,000', type: 'Rejected', status: 'Rejected',  date: 'Jan 28', risk: 41 },
+        { id: 'TXN-008', customer: 'Rajesh Kumar',      partner: 'HDFC Bank Ltd',    amount: '₹5,20,000', type: 'Funded',   status: 'Completed', date: 'Feb 1',  risk: 87 },
+        { id: 'TXN-009', customer: 'Neha Joshi',        partner: 'FinancePro IN',    amount: '₹80,000',   type: 'Pending',  status: 'Pending',   date: 'Feb 4',  risk: 55 },
+        { id: 'TXN-010', customer: 'Ananya Singh',      partner: 'ICICI Ventures',   amount: '₹4,00,000', type: 'Funded',   status: 'Completed', date: 'Feb 6',  risk: 82 },
+        { id: 'TXN-011', customer: 'Rohan Natekar',     partner: 'Kotak AIF',        amount: '₹3,60,000', type: 'Funded',   status: 'Completed', date: 'Feb 10', risk: 90 },
+        { id: 'TXN-012', customer: 'Priya Sharma',      partner: 'Bajaj Finserv',    amount: '₹55,000',   type: 'Rejected', status: 'Rejected',  date: 'Feb 12', risk: 38 },
+        { id: 'TXN-013', customer: 'Amit Patel',        partner: 'HDFC Bank Ltd',    amount: '₹2,30,000', type: 'Pending',  status: 'Pending',   date: 'Feb 14', risk: 71 },
+        { id: 'TXN-014', customer: 'Chaitanya Ranade',  partner: 'CapitalFund IN',   amount: '₹1,80,000', type: 'Funded',   status: 'Completed', date: 'Feb 18', risk: 78 },
+        { id: 'TXN-015', customer: 'Sneha Kulkarni',    partner: 'Aditya Birla FC',  amount: '₹3,90,000', type: 'Funded',   status: 'Completed', date: 'Feb 22', risk: 83 },
+    ];
+
+    /* ─── AVATAR COLORS ─── */
+    const AVATARS = ['blue','green','purple','amber','red'];
+    function initials(name) {
+        return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    }
+
+    /* ─── RENDER FINANCE PARTNERS ─── */
+    const financeGrid = document.getElementById('financeGrid');
+    FINANCE_PARTNERS.forEach((p, i) => {
+        const color = AVATARS[i % AVATARS.length];
+        const statusClass = p.status === 'Active' ? 'status-active' : p.status === 'Paused' ? 'badge risk-medium' : 'status-suspended';
+        financeGrid.innerHTML += `
+        <div class="user-overview-card uoc-finance" style="animation-delay:${i*0.05}s">
+            <div class="uoc-header">
+                <div class="uoc-avatar table-avatar ${color}">${initials(p.name)}</div>
+                <div>
+                    <div class="uoc-name">${p.name}</div>
+                    <div class="uoc-email">${p.email}</div>
+                </div>
+                <span class="badge ${statusClass}" style="margin-left:auto">${p.status}</span>
+            </div>
+            <div class="uoc-meta">
+                <span class="uoc-pill highlight">📊 Portfolio: ${p.portfolio}</span>
+                <span class="uoc-pill">ROI: ${p.roi}</span>
+                <span class="uoc-pill">Invoices: ${p.invoices}</span>
+                <span class="uoc-pill">Joined: ${p.joined}</span>
+            </div>
+        </div>`;
+    });
+
+    /* ─── RENDER BUSINESS OWNERS ─── */
+    const businessGrid = document.getElementById('businessGrid');
+    BUSINESS_OWNERS.forEach((b, i) => {
+        const color = AVATARS[i % AVATARS.length];
+        const statusClass = b.status === 'Active' ? 'status-active' : b.status === 'Inactive' ? 'badge risk-medium' : 'status-suspended';
+        businessGrid.innerHTML += `
+        <div class="user-overview-card uoc-business" style="animation-delay:${i*0.05}s">
+            <div class="uoc-header">
+                <div class="uoc-avatar table-avatar ${color}">${initials(b.name)}</div>
+                <div>
+                    <div class="uoc-name">${b.name}</div>
+                    <div class="uoc-email">${b.email}</div>
+                </div>
+                <span class="badge ${statusClass}" style="margin-left:auto">${b.status}</span>
+            </div>
+            <div class="uoc-meta">
+                <span class="uoc-pill">🏢 ${b.company}</span>
+                <span class="uoc-pill highlight">Funded: ${b.funded}</span>
+                <span class="uoc-pill">Invoices: ${b.invoices}</span>
+            </div>
+        </div>`;
+    });
+
+    /* ─── RENDER TRANSACTIONS ─── */
+    function renderTransactions(filter = 'all', search = '') {
+        const tbody = document.getElementById('txnTableBody');
+        const filtered = TRANSACTIONS.filter(t => {
+            const matchFilter = filter === 'all' || t.type.toLowerCase() === filter || t.status.toLowerCase() === filter;
+            const matchSearch = !search || Object.values(t).join(' ').toLowerCase().includes(search.toLowerCase());
+            return matchFilter && matchSearch;
+        });
+        tbody.innerHTML = filtered.map(t => {
+            const statusClass = t.status === 'Completed' ? 'status-active' : t.status === 'Pending' ? 'badge risk-medium' : 'status-suspended';
+            const riskClass   = t.risk >= 80 ? 'risk-low' : t.risk >= 60 ? 'risk-medium' : 'risk-high';
+            return `<tr>
+                <td><span class="mono" style="font-family:var(--font-mono);font-size:12px;color:var(--gray-300)">${t.id}</span></td>
+                <td><strong style="color:var(--white);font-size:13px">${t.customer}</strong></td>
+                <td style="font-size:12px;color:var(--gray-300)">${t.partner}</td>
+                <td><span class="txn-amount credit">${t.amount}</span></td>
+                <td><span class="badge role-finance" style="font-size:11px">${t.type}</span></td>
+                <td><span class="badge ${statusClass}">${t.status}</span></td>
+                <td style="color:var(--gray-400);font-size:12px">${t.date}</td>
+                <td><span class="badge ${riskClass}">${t.risk}/100</span></td>
+            </tr>`;
+        }).join('');
+    }
+    renderTransactions();
+
+    /* ─── FILTER BUTTONS ─── */
+    document.querySelectorAll('.txn-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.txn-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const search = document.getElementById('txnSearch').value;
+            renderTransactions(btn.dataset.filter, search);
+        });
+    });
+
+    /* ─── SEARCH TRANSACTIONS ─── */
+    document.getElementById('txnSearch').addEventListener('input', e => {
+        const activeFilter = document.querySelector('.txn-filter-btn.active')?.dataset.filter || 'all';
+        renderTransactions(activeFilter, e.target.value);
+    });
+
+    /* ─── TAB SWITCHING ─── */
+    const tabPanelMap = {
+        finance:      document.getElementById('tabFinance'),
+        business:     document.getElementById('tabBusiness'),
+        transactions: document.getElementById('tabTransactions'),
+        health:       document.getElementById('tabHealth')
+    };
+
+    document.getElementById('adminTabs').addEventListener('click', e => {
+        const tab = e.target.closest('.admin-tab');
+        if (!tab) return;
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        Object.entries(tabPanelMap).forEach(([key, panel]) => {
+            if (panel) panel.style.display = key === target ? 'block' : 'none';
+        });
+    });
+
+    /* ─── MOBILE SIDEBAR ─── */
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    document.getElementById('mobileSidebarBtn').addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    });
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    });
+
+    /* ─── LOGOUT ─── */
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('invoiceflow_admin');
+        localStorage.removeItem('invoiceflow_admin_role');
+        localStorage.removeItem('invoiceflow_admin_avatar');
+        localStorage.removeItem('invoiceflow_admin_color');
+        window.location.href = 'admin-login.html';
+    });
+
+    </script>
 </body>
 
 </html>

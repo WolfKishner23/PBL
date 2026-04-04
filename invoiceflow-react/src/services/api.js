@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = BASE.endsWith('/api') ? BASE : `${BASE}/api`;
+
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_BASE,
     headers: { 'Content-Type': 'application/json' }
 });
 
@@ -35,6 +38,7 @@ export const authAPI = {
     login: (data) => API.post('/auth/login', data),
     getMe: () => API.get('/auth/me'),
     forgot: (email) => API.post('/auth/forgot', { email }),
+    resetPassword: (email, otp, newPassword) => API.post('/auth/reset-password', { email, otp, newPassword }),
     updateProfile: (data) => API.put('/auth/profile', data),
 };
 
@@ -69,4 +73,12 @@ export const adminAPI = {
     deleteUser: (id) => API.delete(`/admin/users/${id}`),
 };
 
+// ─── AI API ───────────────────────────────────────────────────────────────────
+export const aiAPI = {
+    extract: (formData) => API.post('/ai/extract', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+};
+
 export default API;
+

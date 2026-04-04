@@ -916,3 +916,64 @@
         max-width: 100%;
     }
 }
+
+/* ═══════════════════ FIELD VALIDATION STYLES ═══════════════════ */
+.input-error {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.input-error:focus {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.field-error {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #EF4444;
+    margin-top: 4px;
+    animation: errorSlide 0.2s ease;
+}
+
+@keyframes errorSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Password Strength Meter */
+.password-strength {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.strength-bars {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+}
+
+.strength-bar {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.3s ease;
+}
+
+.strength-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    min-width: 44px;
+    text-align: right;
+}

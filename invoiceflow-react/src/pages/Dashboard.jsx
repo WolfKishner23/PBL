@@ -9,6 +9,7 @@ export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
+    const [glowInvoiceId, setGlowInvoiceId] = useState(null);
     const [notifOpen, setNotifOpen] = useState(false);
     const [notifCleared, setNotifCleared] = useState(false);
     const [dateStr, setDateStr] = useState('');
@@ -65,14 +66,27 @@ export default function Dashboard() {
     /* ═══════════ Cash Flow Chart ═══════════ */
     useEffect(() => {
         const canvas = chartRef.current;
-        if (!canvas) return;
+        if (!canvas || loadingData) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
 
-        const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
-        const inflow = [3.2, 4.1, 3.8, 5.5, 4.9, 6.3];
-        const outflow = [2.8, 3.0, 3.5, 3.2, 3.8, 4.1];
-        const maxVal = 8;
+        // Build last 6 months from real invoice data
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const now = new Date();
+        const months = [];
+        const inflow = [];
+        const outflow = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push(monthNames[d.getMonth()]);
+            const monthInvoices = invoices.filter(inv => {
+                const cd = new Date(inv.createdAt);
+                return cd.getMonth() === d.getMonth() && cd.getFullYear() === d.getFullYear();
+            });
+            const fundedSum = monthInvoices.filter(inv => inv.status === 'funded').reduce((s, inv) => s + parseFloat(inv.amount || 0), 0);
+            inflow.push(parseFloat((fundedSum / 100000).toFixed(1))); // funded amount in Lakhs
+        }
+        const maxVal = Math.max(1, ...inflow) * 1.3;
         const BLUE = '#3B82F6', GREY = '#475569', GRID = 'rgba(255,255,255,.04)', LABEL = '#64748B';
 
         function roundedRect(ctx, x, y, w, h, r) {
@@ -132,16 +146,11 @@ export default function Dashboard() {
             months.forEach((m, i) => {
                 const x = padL + i * groupW + groupW / 2;
                 const ih = (inflow[i] / maxVal) * chartH * progress;
-                const ix = x - barW - gap / 2;
+                const barWidth = Math.min(groupW * 0.45, 36);
+                const ix = x - barWidth / 2;
                 const iy = padT + chartH - ih;
-                roundedRect(ctx, ix, iy, barW, ih, 4);
+                roundedRect(ctx, ix, iy, barWidth, ih, 4);
                 ctx.fillStyle = BLUE;
-                ctx.fill();
-                const oh = (outflow[i] / maxVal) * chartH * progress;
-                const ox = x + gap / 2;
-                const oy = padT + chartH - oh;
-                roundedRect(ctx, ox, oy, barW, oh, 4);
-                ctx.fillStyle = GREY;
                 ctx.fill();
                 ctx.fillStyle = LABEL;
                 ctx.font = '11px Sora, sans-serif';
@@ -182,7 +191,7 @@ export default function Dashboard() {
             const groupW = chartW / months.length;
             const idx = Math.floor((mx - padL) / groupW);
             if (idx >= 0 && idx < months.length) {
-                tooltip.innerHTML = `<strong>${months[idx]}</strong><br><span style="color:#3B82F6">Inflow:</span> ₹${inflow[idx]}L<br><span style="color:#94A3B8">Outflow:</span> ₹${outflow[idx]}L`;
+                tooltip.innerHTML = `<strong>${months[idx]}</strong><br><span style="color:#3B82F6">Funded:</span> ₹${inflow[idx]}L`;
                 tooltip.style.opacity = '1';
                 tooltip.style.left = (e.clientX + 14) + 'px';
                 tooltip.style.top = (e.clientY - 10) + 'px';
@@ -204,7 +213,7 @@ export default function Dashboard() {
                 tooltipRef.current = null;
             }
         };
-    }, []);
+    }, [invoices, loadingData]);
 
     // Helper functions
     const formatAmount = (amount) => {
@@ -245,6 +254,31 @@ export default function Dashboard() {
         return matchesSearch && matchesFilter;
     });
 
+    // Search handler: scroll to invoice table and glow matching row
+    function handleSearch(value) {
+        setSearch(value);
+        if (value.trim().length >= 2) {
+            // Scroll to invoice table section
+            setTimeout(() => {
+                const tableSection = document.getElementById('section-invoices');
+                if (tableSection) {
+                    tableSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                // Find and glow the first matching invoice row
+                const match = invoices.find(inv =>
+                    (inv.invoiceNumber || '').toLowerCase().includes(value.toLowerCase()) ||
+                    (inv.debtorCompany || '').toLowerCase().includes(value.toLowerCase())
+                );
+                if (match) {
+                    setGlowInvoiceId(match.id);
+                    setTimeout(() => setGlowInvoiceId(null), 2000);
+                }
+            }, 100);
+        } else {
+            setGlowInvoiceId(null);
+        }
+    }
+
     return (
         <>
             <Sidebar variant="business" activeSection="dashboard" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -263,7 +297,7 @@ export default function Dashboard() {
                     <div className="header-right">
                         <div className="search-box">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                            <input type="text" placeholder="Search invoices…" value={search} onChange={e => setSearch(e.target.value)} />
+                            <input type="text" placeholder="Search invoices…" value={search} onChange={e => handleSearch(e.target.value)} />
                         </div>
                         <div style={{ position: 'relative' }} ref={notifRef}>
                             <button className="icon-btn notification-btn" onClick={(e) => { e.stopPropagation(); setNotifOpen(!notifOpen); }} aria-label="Notifications">
@@ -305,7 +339,7 @@ export default function Dashboard() {
                 </header>
 
                 {/* Stat Cards */}
-                <section className="stat-cards">
+                <section id="section-dashboard" className="stat-cards">
                     {[
                         { label: 'Total Invoices', value: totalInvoices.toString(), change: `${invoices.filter(i => i.status === 'funded').length} funded`, accent: 'blue', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg> },
                         { label: 'Amount Funded', value: totalFunded > 100000 ? `₹${(totalFunded / 100000).toFixed(1)}L` : formatAmount(totalFunded), change: `${invoices.filter(i => i.status === 'funded').length} invoices`, accent: 'green', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M6 6l4-4 4 4M5 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> },
@@ -324,7 +358,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* Charts & Activity */}
-                <section className="two-col">
+                <section id="section-cashflow" className="two-col">
                     <div className="card chart-card">
                         <div className="card-header">
                             <div>
@@ -332,8 +366,7 @@ export default function Dashboard() {
                                 <p className="card-subtitle">Last 6 months</p>
                             </div>
                             <div className="chart-legend">
-                                <span className="legend-item"><span className="legend-dot blue"></span>Inflow</span>
-                                <span className="legend-item"><span className="legend-dot grey"></span>Outflow</span>
+                                <span className="legend-item"><span className="legend-dot blue"></span>Funded Amount</span>
                             </div>
                         </div>
                         <div className="chart-wrapper">
@@ -360,7 +393,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* Invoice Table */}
-                <section className="card table-card">
+                <section id="section-invoices" className="card table-card">
                     <div className="table-header">
                         <div className="table-header-left">
                             <h2 className="card-title">Recent Invoices</h2>
@@ -395,8 +428,16 @@ export default function Dashboard() {
                                     <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
                                 ) : filteredInvoices.length === 0 ? (
                                     <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
-                                ) : filteredInvoices.map(inv => (
-                                    <tr key={inv.id} data-status={inv.status}>
+                                ) : filteredInvoices.map(inv => {
+                                    const isGlowing = glowInvoiceId === inv.id;
+                                    return (
+                                    <tr key={inv.id} data-status={inv.status} id={`invoice-row-${inv.id}`}
+                                        style={isGlowing ? {
+                                            boxShadow: '0 0 0 2px rgba(59,130,246,.5), 0 0 20px rgba(59,130,246,.15)',
+                                            background: 'rgba(59,130,246,.08)',
+                                            transition: 'all .3s ease'
+                                        } : {}}
+                                    >
                                         <td className="td-id">{inv.invoiceNumber}</td>
                                         <td>{inv.debtorCompany}</td>
                                         <td className="td-amount">{formatAmount(inv.amount)}</td>
@@ -405,7 +446,8 @@ export default function Dashboard() {
                                         <td><span className={`badge ${getStatusClass(inv.status)}`}>{getStatusLabel(inv.status)}</span></td>
                                         <td><button className="btn-ghost-sm">View</button></td>
                                     </tr>
-                                ))}
+                                );
+                                })}
                             </tbody>
                         </table>
                     </div>

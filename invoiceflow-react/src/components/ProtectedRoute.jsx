@@ -4,6 +4,14 @@ import { useAuth } from '../context/AuthContext';
 export default function ProtectedRoute({ children, roles }) {
     const { user, token, loading } = useAuth();
 
+    // ── Admin portal bypass ──
+    // Admins log in via /admin-login and store their session in localStorage.
+    // They don't get a JWT token, so we check localStorage directly.
+    const adminSession = localStorage.getItem('invoiceflow_admin');
+    if (adminSession && roles && roles.includes('admin')) {
+        return children;
+    }
+
     if (loading) {
         return (
             <div style={{
@@ -28,3 +36,4 @@ export default function ProtectedRoute({ children, roles }) {
 
     return children;
 }
+

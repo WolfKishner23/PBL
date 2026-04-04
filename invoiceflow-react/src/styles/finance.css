@@ -3,6 +3,28 @@
    Trading terminal aesthetic · extends dashboard.css
    ═══════════════════════════════════════════════════ */
 
+/* ═══════════════════ SECTION GLOW (sidebar nav click) ═══════════════════ */
+.section-glow {
+    animation: sectionGlow 1.5s ease-out;
+}
+
+.section-glow > .card,
+.section-glow > div {
+    animation: sectionGlow 1.5s ease-out;
+}
+
+@keyframes sectionGlow {
+    0% {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0), 0 0 0 rgba(59, 130, 246, 0);
+        border-color: var(--border);
+    }
+}
+
 /* ═══════════════════ LIVE TICKER ═══════════════════ */
 .live-ticker {
     display: flex;
@@ -239,19 +261,13 @@
     box-shadow: inset 3px 0 0 var(--blue);
 }
 
-.finance-table tbody tr.row-approved {
-    opacity: .5;
-    pointer-events: none;
-}
-
 .finance-table tbody tr.row-approved td:first-child::before {
     content: '✓ ';
     color: var(--green);
 }
 
 .finance-table tbody tr.row-rejected {
-    opacity: .35;
-    pointer-events: none;
+    opacity: .6;
 }
 
 .finance-table tbody tr.row-rejected td:first-child::before {

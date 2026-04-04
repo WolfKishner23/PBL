@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { invoiceAPI } from '../services/api';
+import { invoiceAPI, aiAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import '../styles/dashboard.css';
 import '../styles/upload.css';
@@ -27,8 +27,49 @@ export default function UploadPage() {
         debtorGST: '',
         dueDate: '',
         paymentTerms: 'Net 30',
+        industry: '',
         description: ''
     });
+    const [fieldErrors, setFieldErrors] = useState({});
+
+    function validateGSTIN(val) {
+        return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/i.test(val);
+    }
+
+    function validateForm() {
+        const errors = {};
+        const amt = parseFloat(formData.amount);
+        if (!formData.amount || isNaN(amt) || amt <= 0) {
+            errors.amount = 'Amount must be greater than ₹0';
+        } else if (amt > 100000000) {
+            errors.amount = 'Amount cannot exceed ₹10 Cr';
+        }
+        if (!formData.debtorCompany.trim()) {
+            errors.debtorCompany = 'Debtor company name is required';
+        }
+        if (formData.debtorGST.trim() && !validateGSTIN(formData.debtorGST.trim())) {
+            errors.debtorGST = 'Invalid GSTIN format (e.g., 27AATCS1286K1ZP)';
+        }
+        if (!formData.dueDate) {
+            errors.dueDate = 'Due date is required';
+        } else if (new Date(formData.dueDate) <= new Date()) {
+            errors.dueDate = 'Due date must be in the future';
+        }
+        if (!formData.industry) {
+            errors.industry = 'Please select an industry';
+        }
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    }
+
+    function updateField(field, val) {
+        setFormData(prev => ({ ...prev, [field]: val }));
+        if (fieldErrors[field]) {
+            setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+        }
+    }
+
+    const [extractionStatus, setExtractionStatus] = useState(''); // '', 'extracting', 'done', 'failed'
 
     function handleFile(f) {
         if (!f) return;
@@ -37,6 +78,40 @@ export default function UploadPage() {
         if (f.size > 10 * 1024 * 1024) return;
         setFile(f);
         setCurrentStep(1);
+        extractFromFile(f);
+    }
+
+    async function extractFromFile(f) {
+        setExtractionStatus('extracting');
+        setFieldErrors({}); // clear any previous errors
+        try {
+            const fd = new FormData();
+            fd.append('pdf', f);
+            const res = await aiAPI.extract(fd);
+            // Backend returns { extractedData: { success, rawText, extracted: {...}, confidence } }
+            const wrapper = res.data?.extractedData || res.data || {};
+            const data = wrapper?.extracted || wrapper || {};
+            const hasData = data.amount || data.debtorCompany || data.debtorGST || data.dueDate || data.industry;
+            if (hasData) {
+                setFormData(prev => ({
+                    ...prev,
+                    amount: data.amount ? String(data.amount) : prev.amount,
+                    debtorCompany: data.debtorCompany || prev.debtorCompany,
+                    debtorGST: data.debtorGST || prev.debtorGST,
+                    dueDate: data.dueDate || prev.dueDate,
+                    paymentTerms: data.paymentTerms || prev.paymentTerms,
+                    industry: data.industry || prev.industry,
+                    description: data.description || prev.description,
+                }));
+                setFieldErrors({}); // clear errors after populating
+                setExtractionStatus('done');
+            } else {
+                setExtractionStatus('failed');
+            }
+        } catch (err) {
+            console.warn('AI extraction unavailable:', err.message);
+            setExtractionStatus('failed');
+        }
     }
 
     function handleDrop(e) {
@@ -46,6 +121,7 @@ export default function UploadPage() {
     }
 
     async function handleExtract() {
+        if (!validateForm()) return;
         setExtracting(true);
         setError('');
         setCurrentStep(2);
@@ -58,6 +134,7 @@ export default function UploadPage() {
                 debtorGST: formData.debtorGST,
                 dueDate: formData.dueDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 paymentTerms: formData.paymentTerms,
+                industry: formData.industry,
                 description: formData.description
             });
 
@@ -244,7 +321,7 @@ export default function UploadPage() {
                                     </svg>
                                     <p className="dropzone-main">Drag & drop your invoice PDF here</p>
                                     <p className="dropzone-alt">or <span className="dropzone-link">click to browse</span></p>
-                                    <p className="dropzone-hint">PDF, PNG, JPG — max 10MB</p>
+                                    <p className="dropzone-hint">PDF, PNG, JPG — max 10MB (optional)</p>
                                     <input type="file" ref={fileInputRef} accept=".pdf,.png,.jpg,.jpeg" hidden onChange={e => { if (e.target.files.length > 0) handleFile(e.target.files[0]); }} />
                                 </div>
                             ) : (
@@ -264,12 +341,23 @@ export default function UploadPage() {
                                         </div>
                                         <button className="uploaded-replace" onClick={handleReplace}>Click to replace</button>
                                     </div>
-                                    <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk}>
-                                        {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract'}
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                    </button>
+                                    {extractionStatus === 'extracting' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', color: '#3B82F6', fontSize: '13px' }}>
+                                            ⚡ AI is extracting invoice data…
+                                        </div>
+                                    )}
+                                    {extractionStatus === 'done' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', color: '#22C55E', fontSize: '13px' }}>
+                                            ✓ AI extracted fields — review & edit on the right
+                                        </div>
+                                    )}
                                 </div>
                             )}
+
+                            {/* Create Invoice Button — always visible */}
+                            <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk} style={{ marginTop: '16px' }}>
+                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract  →'}
+                            </button>
                         </div>
 
                         {/* STEP 3 — AI Risk Score Card */}
@@ -369,24 +457,24 @@ export default function UploadPage() {
                             ) : (
                                 <div className="preview-fields" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 4px' }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Amount (₹)</label>
-                                        <input type="number" className="form-input" placeholder="350000" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Amount (₹) *</label>
+                                        <input type="number" className={`form-input${fieldErrors.amount ? ' input-error' : ''}`} placeholder="350000" value={formData.amount} onChange={e => updateField('amount', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.amount ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        {fieldErrors.amount && <span className="field-error">{fieldErrors.amount}</span>}
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Debtor Company</label>
-                                        <input type="text" className="form-input" placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => setFormData({ ...formData, debtorCompany: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Debtor Company *</label>
+                                        <input type="text" className={`form-input${fieldErrors.debtorCompany ? ' input-error' : ''}`} placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => updateField('debtorCompany', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.debtorCompany ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        {fieldErrors.debtorCompany && <span className="field-error">{fieldErrors.debtorCompany}</span>}
                                     </div>
+
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>GST Number</label>
-                                        <input type="text" className="form-input" placeholder="27AATCS1286K1ZP" value={formData.debtorGST} onChange={e => setFormData({ ...formData, debtorGST: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Due Date</label>
-                                        <input type="date" className="form-input" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Due Date *</label>
+                                        <input type="date" className={`form-input${fieldErrors.dueDate ? ' input-error' : ''}`} value={formData.dueDate} onChange={e => updateField('dueDate', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.dueDate ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        {fieldErrors.dueDate && <span className="field-error">{fieldErrors.dueDate}</span>}
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Payment Terms</label>
-                                        <select className="form-input" value={formData.paymentTerms} onChange={e => setFormData({ ...formData, paymentTerms: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}>
+                                        <select className="form-input" value={formData.paymentTerms} onChange={e => updateField('paymentTerms', e.target.value)} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}>
                                             <option value="Net 30">Net 30</option>
                                             <option value="Net 45">Net 45</option>
                                             <option value="Net 60">Net 60</option>
@@ -394,8 +482,26 @@ export default function UploadPage() {
                                         </select>
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Industry *</label>
+                                        <select className={`form-input${fieldErrors.industry ? ' input-error' : ''}`} value={formData.industry} onChange={e => updateField('industry', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.industry ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}>
+                                            <option value="">Select Industry</option>
+                                            <option value="manufacturing">Manufacturing</option>
+                                            <option value="it">IT / Software</option>
+                                            <option value="healthcare">Healthcare</option>
+                                            <option value="pharma">Pharmaceuticals</option>
+                                            <option value="finance">Finance / Banking</option>
+                                            <option value="export">Export</option>
+                                            <option value="construction">Construction</option>
+                                            <option value="retail">Retail</option>
+                                            <option value="agriculture">Agriculture</option>
+                                            <option value="government">Government</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                        {fieldErrors.industry && <span className="field-error">{fieldErrors.industry}</span>}
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Description</label>
-                                        <input type="text" className="form-input" placeholder="Steel supply invoice" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
+                                        <input type="text" className="form-input" placeholder="Steel supply invoice" value={formData.description} onChange={e => updateField('description', e.target.value)} style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
                                     </div>
                                 </div>
                             )}

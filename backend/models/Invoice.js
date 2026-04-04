@@ -36,6 +36,9 @@ const Invoice = sequelize.define('Invoice', {
     paymentTerms: {
         type: DataTypes.STRING
     },
+    industry: {
+        type: DataTypes.STRING
+    },
     description: {
         type: DataTypes.TEXT
     },
