@@ -17,10 +17,13 @@ const financeNavItems = [
 ];
 
 const adminNavItems = [
-    { to: '/admin', icon: 'grid', label: 'Admin', section: 'admin' },
+    { to: '/admin', icon: 'grid', label: 'Overview', section: 'overview' },
     { to: '/admin', icon: 'users', label: 'Users', section: 'users' },
-    { to: '/admin', icon: 'invoice', label: 'Invoices', section: 'invoices' },
-    { to: '/admin', icon: 'analytics', label: 'Analytics', section: 'analytics' },
+    { to: '/admin', icon: 'chart', label: 'Finance Partners', section: 'finance' },
+    { to: '/admin', icon: 'briefcase', label: 'Business Owners', section: 'business' },
+    { to: '/admin', icon: 'invoice', label: 'Invoices', section: 'transactions' },
+    { to: '/admin', icon: 'feedback', label: 'Feedbacks', section: 'feedbacks' },
+    { to: '/admin', icon: 'analytics', label: 'Analytics', section: 'health' },
 ];
 
 const icons = {
@@ -59,6 +62,19 @@ const icons = {
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
             <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+    ),
+    briefcase: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="7" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M7 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M2 11h16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+    ),
+    feedback: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 4a2 2 0 012-2h10a2 2 0 012 2v9a2 2 0 01-2 2H8l-4 3v-3a2 2 0 01-1-1.7V4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M7 7h6M7 10h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
     ),
     analytics: (
@@ -177,7 +193,14 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
                 <div className="sidebar-bottom">
                     <hr className="sidebar-divider" />
                     <div className="user-card" ref={menuRef} style={{ position: 'relative' }}>
-                        <div className={`user-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>{initials}</div>
+                        <div className={`user-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>
+                            {isAdminVariant ? (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="8" r="4" />
+                                    <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+                                </svg>
+                            ) : initials}
+                        </div>
                         <div className="user-info">
                             <span className="user-name">{userName}</span>
                             <span className="user-role">{userRole}</span>
@@ -199,7 +222,14 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
                         {menuOpen && (
                             <div className="user-dropdown">
                                 <div className="user-dropdown-profile">
-                                    <div className={`user-dropdown-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>{initials}</div>
+                                    <div className={`user-dropdown-avatar${variant === 'admin' ? ' admin-avatar' : ''}`}>
+                                        {isAdminVariant ? (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <circle cx="12" cy="8" r="4" />
+                                                <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+                                            </svg>
+                                        ) : initials}
+                                    </div>
                                     <div className="user-dropdown-details">
                                         <span className="user-dropdown-business">{businessName}</span>
                                         <span className="user-dropdown-name">{userName}</span>

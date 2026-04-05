@@ -95,4 +95,12 @@ export const aiAPI = {
     }),
 };
 
+// ─── Feedback API ─────────────────────────────────────────────────────────────
+export const feedbackAPI = {
+    submit: (data) => axios.post(`${API_BASE}/feedback`, data),       // public — no auth
+    getAll: (params) => API.get('/feedback', { params }),               // admin only
+    markRead: (id) => API.put(`/feedback/${id}/read`),                 // admin only
+    delete: (id) => API.delete(`/feedback/${id}`),                     // admin only
+};
+
 export default API;

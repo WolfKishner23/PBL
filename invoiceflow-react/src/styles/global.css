@@ -101,3 +101,9 @@ img {
 .red-text {
     color: var(--red) !important;
 }
+
+/* Hide native browser password reveal icons */
+input::-ms-reveal,
+input::-ms-clear {
+    display: none;
+}
