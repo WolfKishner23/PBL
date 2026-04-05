@@ -53,7 +53,8 @@
 
 /* Admin avatar accent */
 .admin-avatar {
-    background: linear-gradient(135deg, var(--blue), #8B5CF6) !important;
+    background: #d1d5db !important;
+    color: #000000 !important;
 }
 
 /* ═══════════════════ ADMIN CONTENT CARD ═══════════════════ */

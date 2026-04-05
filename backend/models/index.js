@@ -1,6 +1,7 @@
 const User = require('./User');
 const Invoice = require('./Invoice');
 const Transaction = require('./Transaction');
+const Feedback = require('./Feedback');
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -28,4 +29,4 @@ Transaction.belongsTo(User, { foreignKey: 'financierId', as: 'financier' });
 User.hasMany(Transaction, { foreignKey: 'businessId', as: 'businessTransactions' });
 Transaction.belongsTo(User, { foreignKey: 'businessId', as: 'business' });
 
-module.exports = { User, Invoice, Transaction };
+module.exports = { User, Invoice, Transaction, Feedback };

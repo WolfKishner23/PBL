@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
-import { adminAPI } from "../services/api";
+import { adminAPI, feedbackAPI } from "../services/api";
 import "../styles/dashboard.css";
 import "../styles/admin.css";
 
@@ -559,9 +559,12 @@ function Pill({ children, highlight }) {
 /* ══════════════ MAIN COMPONENT ══════════════ */
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [tab, setTab] = useState("finance");
+  const [tab, setTab] = useState("overview");
   const [txnFilter, setTxnFilter] = useState("all");
   const [txnSearch, setTxnSearch] = useState("");
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackSearch, setFeedbackSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -598,10 +601,14 @@ export default function AdminDashboard() {
             id: u.id,
             name: u.name,
             email: u.email,
+            company: u.company || '—',
             role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
             status: u.isSuspended ? "Suspended" : "Active",
             invoices: u.invoiceCount || 0,
+            totalFunded: u.totalFunded || 0,
+            transactionCount: u.transactionCount || 0,
             joined: new Date(u.createdAt).toLocaleDateString("en-IN", {
+              day: "numeric",
               month: "short",
               year: "numeric",
             }),
@@ -615,6 +622,19 @@ export default function AdminDashboard() {
       }
     };
     fetchData();
+  }, []);
+
+  /* ── Fetch feedbacks ── */
+  useEffect(() => {
+    const fetchFeedbacks = async () => {
+      try {
+        const res = await feedbackAPI.getAll();
+        setFeedbacks(res.data.feedbacks || []);
+      } catch {
+        /* silently fail if no backend */
+      }
+    };
+    fetchFeedbacks();
   }, []);
 
   if (adminName === null) {
@@ -659,13 +679,78 @@ export default function AdminDashboard() {
     return matchFilter && matchSearch;
   });
 
-  const TABS = ["finance", "business", "transactions", "health"];
+  const TABS = ["overview", "users", "finance", "business", "transactions", "feedbacks", "health"];
   const TAB_LABELS = {
+    overview: "Overview",
+    users: "Registered Users",
     finance: "Finance Partners",
     business: "Business Owners",
     transactions: "All Transactions",
+    feedbacks: "Feedbacks",
     health: "System Health",
   };
+
+  /* ── Filtered users ── */
+  const filteredUsers = users.filter((u) => {
+    if (!userSearch) return true;
+    return [u.name, u.email, u.company, u.role]
+      .join(" ")
+      .toLowerCase()
+      .includes(userSearch.toLowerCase());
+  });
+
+  /* ── Filtered feedbacks ── */
+  const filteredFeedbacks = feedbacks.filter((f) => {
+    if (!feedbackSearch) return true;
+    return [f.name, f.email, f.subject, f.message]
+      .join(" ")
+      .toLowerCase()
+      .includes(feedbackSearch.toLowerCase());
+  });
+
+  const SUBJECT_LABELS = {
+    general: "General Inquiry",
+    support: "Technical Support",
+    billing: "Billing & Payments",
+    partnership: "Partnership",
+    feedback: "Feedback",
+    other: "Other",
+  };
+
+  const SUBJECT_COLORS = {
+    general: { bg: "rgba(59,130,246,.12)", color: "#60a5fa", border: "rgba(59,130,246,.25)" },
+    support: { bg: "rgba(245,158,11,.12)", color: "#f59e0b", border: "rgba(245,158,11,.25)" },
+    billing: { bg: "rgba(34,197,94,.12)", color: "#22c55e", border: "rgba(34,197,94,.25)" },
+    partnership: { bg: "rgba(168,85,247,.12)", color: "#a855f7", border: "rgba(168,85,247,.25)" },
+    feedback: { bg: "rgba(99,102,241,.12)", color: "#818cf8", border: "rgba(99,102,241,.25)" },
+    other: { bg: "rgba(107,114,128,.12)", color: "#9ca3af", border: "rgba(107,114,128,.25)" },
+  };
+
+  function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  async function handleDeleteFeedback(id) {
+    try {
+      await feedbackAPI.delete(id);
+      setFeedbacks((prev) => prev.filter((f) => f.id !== id));
+    } catch { /* ignore */ }
+  }
+
+  async function handleMarkRead(id) {
+    try {
+      await feedbackAPI.markRead(id);
+      setFeedbacks((prev) => prev.map((f) => f.id === id ? { ...f, isRead: true } : f));
+    } catch { /* ignore */ }
+  }
 
   return (
     <>
@@ -678,9 +763,13 @@ export default function AdminDashboard() {
 
       <Sidebar
         variant="admin"
-        activeSection="admin"
+        activeSection={tab}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        onSectionClick={(section) => {
+          setTab(section);
+          setSidebarOpen(false);
+        }}
       />
 
       <main className="main">
@@ -909,6 +998,234 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+
+          {/* ── Overview ── */}
+          {tab === "overview" && (
+            <div style={{ padding: "24px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+                  gap: "16px",
+                  marginBottom: "24px",
+                }}
+              >
+                {[
+                  { label: "Total Users", value: users.length.toString(), icon: "👥", accent: "#3B82F6" },
+                  { label: "Business Owners", value: users.filter(u => u.role === "Company").length.toString(), icon: "🏢", accent: "#22c55e" },
+                  { label: "Finance Partners", value: users.filter(u => u.role === "Finance").length.toString(), icon: "💰", accent: "#a855f7" },
+                  { label: "Total Invoices", value: users.reduce((s, u) => s + u.invoices, 0).toString(), icon: "📄", accent: "#f59e0b" },
+                ].map((card, i) => (
+                  <div key={i} style={{
+                    background: "rgba(255,255,255,.02)",
+                    border: "1px solid rgba(255,255,255,.07)",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    position: "relative",
+                    overflow: "hidden",
+                    animation: `fadeUp .4s ease ${i * 0.08}s both`,
+                  }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: card.accent }} />
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "8px", fontWeight: 500 }}>
+                      {card.icon} {card.label}
+                    </div>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: "28px",
+                      fontWeight: 700,
+                      color: "#f0f1ff",
+                    }}>
+                      {card.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                background: "rgba(255,255,255,.02)",
+                border: "1px solid rgba(255,255,255,.07)",
+                borderRadius: "12px",
+                padding: "20px",
+              }}>
+                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#f0f1ff", marginBottom: "12px" }}>Recent Users</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {users.slice(0, 5).map((u, i) => (
+                    <div key={i} style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 14px",
+                      background: "rgba(255,255,255,.02)",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255,255,255,.05)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{
+                          width: "32px", height: "32px", borderRadius: "50%",
+                          background: AVATAR_COLORS[i % 5].bg, color: AVATAR_COLORS[i % 5].color,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", fontWeight: 700,
+                        }}>
+                          {initials(u.name)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#f0f1ff" }}>{u.name}</div>
+                          <div style={{ fontSize: "11px", color: "#6b7280" }}>{u.email}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <Pill>{u.role}</Pill>
+                        <StatusBadge status={u.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {users.length > 5 && (
+                  <button onClick={() => setTab("users")} style={{
+                    marginTop: "12px", padding: "8px 16px", borderRadius: "8px",
+                    background: "rgba(59,130,246,.08)", border: "1px solid rgba(59,130,246,.2)",
+                    color: "#60a5fa", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                    fontFamily: "'Sora',sans-serif",
+                  }}>View all users →</button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Users (Real Registered Users) ── */}
+          {tab === "users" && (
+            <div>
+              {/* Search + Count Bar */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: "12px",
+                padding: "16px 24px 12px", flexWrap: "wrap",
+              }}>
+                <span style={{
+                  fontSize: "13px", color: "#9ca3af",
+                  fontFamily: "'JetBrains Mono',monospace",
+                }}>
+                  {users.length} registered users
+                </span>
+                <div style={{
+                  marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px",
+                  background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.07)",
+                  borderRadius: "8px", padding: "6px 12px",
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="5.5" cy="5.5" r="4" stroke="#6b7280" strokeWidth="1.3" />
+                    <path d="M8.5 8.5L11 11" stroke="#6b7280" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search users…"
+                    style={{
+                      background: "none", border: "none", outline: "none",
+                      color: "#f0f1ff", fontFamily: "'Sora',sans-serif",
+                      fontSize: "13px", width: "200px",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Users Table */}
+              <div className="table-scroll">
+                <table className="invoice-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Company</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Invoices</th>
+                      <th>Transactions</th>
+                      <th>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>
+                          {users.length === 0 ? "No registered users yet" : "No users match your search"}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((u, i) => {
+                        const ac = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                        const roleColor = u.role === "Finance" 
+                          ? { bg: "rgba(168,85,247,.12)", color: "#a855f7", border: "rgba(168,85,247,.25)" }
+                          : (u.role === "Company" || u.role === "Business")
+                          ? { bg: "rgba(59,130,246,.12)", color: "#60a5fa", border: "rgba(59,130,246,.25)" }
+                          : { bg: "rgba(107,114,128,.12)", color: "#9ca3af", border: "rgba(107,114,128,.25)" };
+                        return (
+                          <tr key={u.id}>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <div style={{
+                                  width: "32px", height: "32px", borderRadius: "50%",
+                                  background: ac.bg, color: ac.color,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  fontFamily: "'JetBrains Mono',monospace",
+                                  fontSize: "11px", fontWeight: 700, flexShrink: 0,
+                                }}>
+                                  {initials(u.name)}
+                                </div>
+                                <strong style={{ color: "#f0f1ff", fontSize: "13px" }}>{u.name}</strong>
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: "12px", color: "#9ca3af", fontFamily: "'JetBrains Mono',monospace" }}>
+                                {u.email}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: "12px", color: "#d1d5db" }}>{u.company}</td>
+                            <td>
+                              <span style={{
+                                display: "inline-block", padding: "3px 10px", borderRadius: "20px",
+                                fontSize: "11px", fontWeight: 600,
+                                background: roleColor.bg, color: roleColor.color,
+                                border: `1px solid ${roleColor.border}`, whiteSpace: "nowrap",
+                              }}>
+                                {u.role}
+                              </span>
+                            </td>
+                            <td><StatusBadge status={u.status} /></td>
+                            <td>
+                              <span style={{
+                                fontFamily: "'JetBrains Mono',monospace",
+                                fontSize: "13px", fontWeight: 700,
+                                color: u.invoices > 0 ? "#22c55e" : "#6b7280",
+                              }}>
+                                {u.invoices}
+                              </span>
+                            </td>
+                            <td>
+                              {u.transactionCount > 0 ? (
+                                <span style={{
+                                  fontFamily: "'JetBrains Mono',monospace",
+                                  fontSize: "12px", fontWeight: 600,
+                                  color: "#818cf8",
+                                }}>
+                                  {u.transactionCount} (₹{u.totalFunded > 100000 
+                                    ? (u.totalFunded / 100000).toFixed(1) + 'L' 
+                                    : u.totalFunded.toLocaleString('en-IN')})
+                                </span>
+                              ) : (
+                                <span style={{ color: "#4b5563", fontSize: "14px" }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ color: "#6b7280", fontSize: "12px", whiteSpace: "nowrap" }}>
+                              {u.joined}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* ── Finance Partners ── */}
           {tab === "finance" && (
@@ -1295,6 +1612,199 @@ export default function AdminDashboard() {
                               >
                                 {t.risk}/100
                               </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Feedbacks ── */}
+          {tab === "feedbacks" && (
+            <div>
+              {/* Search + Count Bar */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "16px 24px 12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: "#9ca3af",
+                    fontFamily: "'JetBrains Mono',monospace",
+                  }}
+                >
+                  {feedbacks.length} total · {feedbacks.filter(f => !f.isRead).length} unread
+                </span>
+                <div
+                  style={{
+                    marginLeft: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "rgba(255,255,255,.04)",
+                    border: "1px solid rgba(255,255,255,.07)",
+                    borderRadius: "8px",
+                    padding: "6px 12px",
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="5.5" cy="5.5" r="4" stroke="#6b7280" strokeWidth="1.3" />
+                    <path d="M8.5 8.5L11 11" stroke="#6b7280" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    value={feedbackSearch}
+                    onChange={(e) => setFeedbackSearch(e.target.value)}
+                    placeholder="Search feedbacks…"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      outline: "none",
+                      color: "#f0f1ff",
+                      fontFamily: "'Sora',sans-serif",
+                      fontSize: "13px",
+                      width: "200px",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Feedback Table */}
+              <div className="table-scroll">
+                <table className="invoice-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "30px" }}></th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Subject</th>
+                      <th>Message</th>
+                      <th>Received</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFeedbacks.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>
+                          {feedbacks.length === 0
+                            ? "No feedbacks received yet"
+                            : "No feedbacks match your search"}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredFeedbacks.map((f, i) => {
+                        const sc = SUBJECT_COLORS[f.subject] || SUBJECT_COLORS.other;
+                        return (
+                          <tr key={f.id} style={{ opacity: f.isRead ? 0.7 : 1 }}>
+                            <td>
+                              {!f.isRead && (
+                                <span
+                                  style={{
+                                    width: "8px",
+                                    height: "8px",
+                                    borderRadius: "50%",
+                                    background: "#3B82F6",
+                                    display: "inline-block",
+                                  }}
+                                  title="Unread"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              <strong style={{ color: "#f0f1ff", fontSize: "13px" }}>
+                                {f.name}
+                              </strong>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: "12px", color: "#9ca3af", fontFamily: "'JetBrains Mono',monospace" }}>
+                                {f.email}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  padding: "3px 10px",
+                                  borderRadius: "20px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  background: sc.bg,
+                                  color: sc.color,
+                                  border: `1px solid ${sc.border}`,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {SUBJECT_LABELS[f.subject] || f.subject}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                style={{
+                                  display: "block",
+                                  maxWidth: "280px",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  color: "#d1d5db",
+                                  fontSize: "12px",
+                                }}
+                                title={f.message}
+                              >
+                                {f.message}
+                              </span>
+                            </td>
+                            <td style={{ color: "#6b7280", fontSize: "12px", whiteSpace: "nowrap" }}>
+                              {timeAgo(f.createdAt)}
+                            </td>
+                            <td>
+                              <div style={{ display: "flex", gap: "6px" }}>
+                                {!f.isRead && (
+                                  <button
+                                    onClick={() => handleMarkRead(f.id)}
+                                    title="Mark as read"
+                                    style={{
+                                      padding: "4px 10px",
+                                      borderRadius: "6px",
+                                      border: "1px solid rgba(59,130,246,.25)",
+                                      background: "rgba(59,130,246,.08)",
+                                      color: "#60a5fa",
+                                      fontSize: "11px",
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      fontFamily: "'Sora',sans-serif",
+                                    }}
+                                  >
+                                    ✓ Read
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteFeedback(f.id)}
+                                  title="Delete feedback"
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px solid rgba(239,68,68,.25)",
+                                    background: "rgba(239,68,68,.08)",
+                                    color: "#ef4444",
+                                    fontSize: "11px",
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    fontFamily: "'Sora',sans-serif",
+                                  }}
+                                >
+                                  ✕ Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );

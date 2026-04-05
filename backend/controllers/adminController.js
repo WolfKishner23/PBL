@@ -43,18 +43,38 @@ exports.getDashboardStats = async (req, res) => {
 // ─── GET ALL USERS ────────────────────────────────────────────────────────────
 exports.getAllUsers = async (req, res) => {
     try {
-        const { role, page = 1, limit = 10 } = req.query;
+        const { role, page = 1, limit = 50 } = req.query;
         const where = {};
         if (role) where.role = role;
 
         const offset = (page - 1) * limit;
-        const { rows: users, count: total } = await User.findAndCountAll({
+        const { rows: rawUsers, count: total } = await User.findAndCountAll({
             where,
             attributes: { exclude: ['password'] },
             order: [['createdAt', 'DESC']],
             limit: parseInt(limit),
             offset
         });
+
+        // Enrich each user with invoice count and transaction total
+        const users = await Promise.all(rawUsers.map(async (u) => {
+            const userData = u.toJSON();
+
+            // Count invoices where user is creditor
+            const invoiceCount = await Invoice.count({ where: { creditorId: u.id } });
+
+            // Sum funded transaction amounts where user is the business
+            const totalFunded = await Transaction.sum('fundedAmount', { where: { businessId: u.id } }) || 0;
+
+            // Count transactions
+            const transactionCount = await Transaction.count({ where: { businessId: u.id } });
+
+            userData.invoiceCount = invoiceCount;
+            userData.totalFunded = parseFloat(totalFunded);
+            userData.transactionCount = transactionCount;
+
+            return userData;
+        }));
 
         res.json({
             success: true,

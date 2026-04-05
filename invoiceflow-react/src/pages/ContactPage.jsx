@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import { feedbackAPI } from '../services/api';
 import '../styles/legal.css';
 
 export default function ContactPage() {
@@ -10,16 +11,27 @@ export default function ContactPage() {
         message: ''
     });
     const [submitted, setSubmitted] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitted(true);
-        setTimeout(() => setSubmitted(false), 4000);
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        setSubmitting(true);
+        setError('');
+        try {
+            await feedbackAPI.submit(formData);
+            setSubmitted(true);
+            setFormData({ name: '', email: '', subject: '', message: '' });
+            setTimeout(() => setSubmitted(false), 5000);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to send message. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -101,6 +113,19 @@ export default function ContactPage() {
                                 ✓ Your message has been sent successfully. We'll get back to you soon!
                             </div>
                         )}
+                        {error && (
+                            <div style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '10px',
+                                padding: '14px 18px',
+                                marginBottom: '20px',
+                                color: '#ef4444',
+                                fontSize: '14px'
+                            }}>
+                                ✕ {error}
+                            </div>
+                        )}
                         <form onSubmit={handleSubmit}>
                             <div className="form-group">
                                 <label htmlFor="name">Full Name</label>
@@ -112,6 +137,7 @@ export default function ContactPage() {
                                     value={formData.name}
                                     onChange={handleChange}
                                     required
+                                    disabled={submitting}
                                 />
                             </div>
                             <div className="form-group">
@@ -124,6 +150,7 @@ export default function ContactPage() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
+                                    disabled={submitting}
                                 />
                             </div>
                             <div className="form-group">
@@ -134,6 +161,7 @@ export default function ContactPage() {
                                     value={formData.subject}
                                     onChange={handleChange}
                                     required
+                                    disabled={submitting}
                                 >
                                     <option value="" disabled>Select a subject</option>
                                     <option value="general">General Inquiry</option>
@@ -153,11 +181,12 @@ export default function ContactPage() {
                                     value={formData.message}
                                     onChange={handleChange}
                                     required
+                                    disabled={submitting}
                                 />
                             </div>
-                            <button type="submit" className="contact-submit-btn">
-                                Send Message
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <button type="submit" className="contact-submit-btn" disabled={submitting} style={submitting ? { opacity: 0.7, cursor: 'not-allowed' } : {}}>
+                                {submitting ? 'Sending…' : 'Send Message'}
+                                {!submitting && <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </button>
                         </form>
                     </div>

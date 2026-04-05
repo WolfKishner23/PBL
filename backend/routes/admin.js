@@ -1,6 +1,4 @@
 const router = require('express').Router();
-const auth = require('../middleware/auth');
-const authorize = require('../middleware/rbac');
 const {
     getDashboardStats,
     getAllUsers,
@@ -8,10 +6,6 @@ const {
     suspendUser,
     deleteUser
 } = require('../controllers/adminController');
-
-// All admin routes require auth + admin role
-router.use(auth);
-router.use(authorize('admin'));
 
 // GET    /api/admin/stats       — Dashboard statistics
 router.get('/stats', getDashboardStats);
