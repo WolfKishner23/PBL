@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard — InvoiceFlow</title>
+    <meta name="description"
+        content="InvoiceFlow Business Owner Dashboard — manage invoices, track cash flow, and monitor funding status." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="dashboard.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <a href="index.html" class="sidebar-logo" aria-label="InvoiceFlow home">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="#3B82F6" />
+                    <path d="M8 8h12v2H8zm0 5h8v2H8zm0 5h10v2H8z" fill="#fff" />
+                </svg>
+                <span>InvoiceFlow</span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item active" data-section="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="2" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="2" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <rect x="11" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="invoices">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    My Invoices
+                </a>
+                <a href="upload.html" class="nav-item" data-section="upload">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 13V4m0 0L7 7m3-3l3 3" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M3 13v2a2 2 0 002 2h10a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    Upload Invoice
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="cashflow">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 17l4-5 3 3 7-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Cash Flow
+                </a>
+                <a href="dashboard.html" class="nav-item" data-section="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
+                        <path
+                            d="M10 2v2m0 12v2M2 10h2m12 0h2M4.2 4.2l1.4 1.4m8.8 8.8l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+        </div>
+
+        <div class="sidebar-bottom">
+            <hr class="sidebar-divider" />
+            <div class="user-card">
+                <div class="user-avatar" id="sidebarAvatar">AM</div>
+                <div class="user-info">
+                    <span class="user-name" id="sidebarName">Arjun Mehta</span>
+                    <span class="user-role">Business Owner</span>
+                </div>
+                <svg class="user-more" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.2" fill="currentColor" />
+                </svg>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="main">
+
+        <!-- ─── HEADER BAR ─── -->
+        <header class="header-bar">
+            <div class="header-left">
+                <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                </button>
+                <div>
+                    <h1 class="header-greeting" id="dashGreeting">Good morning, Arjun 👋</h1>
+                    <p class="header-date" id="dashDate">Loading…</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="search-box" id="searchBox">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" placeholder="Search invoices…" id="searchInput" />
+                </div>
+                <div class="notif-wrap" style="position:relative;">
+                    <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path
+                                d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z"
+                                stroke="currentColor" stroke-width="1.5" />
+                            <path d="M8 15a2 2 0 004 0" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" />
+                        </svg>
+                        <span class="notification-dot" id="notifDot"></span>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div class="notif-header">
+                            <span class="notif-title">Notifications</span>
+                            <button class="notif-clear" id="notifClear">Clear all</button>
+                        </div>
+                        <ul class="notif-list" id="notifList">
+                            <li class="notif-item accepted">
+                                <span class="notif-icon">✅</span>
+                                <div class="notif-body">
+                                    <span class="notif-msg"><strong>INV-2024-001</strong> approved by FinancePro</span>
+                                    <span class="notif-time">5 hours ago</span>
+                                </div>
+                            </li>
+                            <li class="notif-item funded">
+                                <span class="notif-icon">💸</span>
+                                <div class="notif-body">
+                                    <span class="notif-msg"><strong>INV-2024-002</strong> funded — ₹1,27,500
+                                        credited</span>
+                                    <span class="notif-time">2 hours ago</span>
+                                </div>
+                            </li>
+                            <li class="notif-item rejected">
+                                <span class="notif-icon">❌</span>
+                                <div class="notif-body">
+                                    <span class="notif-msg"><strong>INV-2024-006</strong> rejected — high risk
+                                        score</span>
+                                    <span class="notif-time">1 day ago</span>
+                                </div>
+                            </li>
+                            <li class="notif-item accepted">
+                                <span class="notif-icon">✅</span>
+                                <div class="notif-body">
+                                    <span class="notif-msg"><strong>INV-2024-003</strong> approved by CapitalFund</span>
+                                    <span class="notif-time">2 days ago</span>
+                                </div>
+                            </li>
+                            <li class="notif-item rejected">
+                                <span class="notif-icon">❌</span>
+                                <div class="notif-body">
+                                    <span class="notif-msg"><strong>INV-2024-005</strong> rejected — debtor low
+                                        credit</span>
+                                    <span class="notif-time">3 days ago</span>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="notif-empty" id="notifEmpty" style="display:none;">
+                            <span>🔔</span>
+                            <p>No new notifications</p>
+                        </div>
+                    </div>
+                </div>
+                <a href="upload.html" class="btn-primary" id="headerUploadBtn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 11V3m0 0L5 6m3-3l3 3" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    Upload Invoice
+                </a>
+            </div>
+        </header>
+
+        <!-- ─── STAT CARDS ─── -->
+        <section class="stat-cards" id="statCards">
+            <div class="stat-card" data-accent="blue">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Total Invoices</span>
+                    <div class="stat-card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M7 6h6M7 9h4M7 12h5" stroke="currentColor" stroke-width="1.3"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="24">24</span>
+            </div>
+            <div class="stat-card" data-accent="amber">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Pending Approval</span>
+                    <div class="stat-card-icon amber">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="3">3</span>
+            </div>
+            <div class="stat-card" data-accent="green">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Total Funded</span>
+                    <div class="stat-card-icon green">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4-.9 4-2"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="14.2">₹14.2L</span>
+                <span class="stat-card-trend up">↑ 18% this month</span>
+            </div>
+            <div class="stat-card" data-accent="purple">
+                <div class="stat-card-top">
+                    <span class="stat-card-label">Outstanding</span>
+                    <div class="stat-card-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="2" y="5" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M2 9h16" stroke="currentColor" stroke-width="1.5" />
+                            <rect x="5" y="12" width="4" height="2" rx=".5" fill="currentColor" opacity=".4" />
+                        </svg>
+                    </div>
+                </div>
+                <span class="stat-card-value" data-count="6.8">₹6.8L</span>
+            </div>
+        </section>
+
+        <!-- ─── CHART + ACTIVITY ─── -->
+        <section class="two-col" id="twoCol">
+            <!-- Cash Flow Chart -->
+            <div class="card chart-card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Cash Flow Overview</h2>
+                        <p class="card-subtitle">Last 6 months</p>
+                    </div>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-dot blue"></span>Inflow</span>
+                        <span class="legend-item"><span class="legend-dot grey"></span>Outflow</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="cashFlowChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card activity-card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Activity</h2>
+                </div>
+                <ul class="activity-list">
+                    <li class="activity-item" data-type="funded">
+                        <div class="activity-dot funded">💸</div>
+                        <div class="activity-text">
+                            <span class="activity-desc"><strong>INV-2024-002</strong> funded —
+                                <strong>₹1,27,500</strong></span>
+                            <span class="activity-time">2 hrs ago</span>
+                        </div>
+                    </li>
+                    <li class="activity-item" data-type="approved">
+                        <div class="activity-dot approved">✅</div>
+                        <div class="activity-text">
+                            <span class="activity-desc"><strong>INV-2024-001</strong> approved by FinancePro</span>
+                            <span class="activity-time">5 hrs ago</span>
+                        </div>
+                    </li>
+                    <li class="activity-item" data-type="ai">
+                        <div class="activity-dot ai">🤖</div>
+                        <div class="activity-text">
+                            <span class="activity-desc">AI risk scored <strong>INV-2024-003</strong></span>
+                            <span class="activity-time">1 day ago</span>
+                        </div>
+                    </li>
+                    <li class="activity-item" data-type="submitted">
+                        <div class="activity-dot submitted">📄</div>
+                        <div class="activity-text">
+                            <span class="activity-desc"><strong>INV-2024-004</strong> submitted</span>
+                            <span class="activity-time">2 days ago</span>
+                        </div>
+                    </li>
+                    <li class="activity-item" data-type="rejected">
+                        <div class="activity-dot rejected">❌</div>
+                        <div class="activity-text">
+                            <span class="activity-desc"><strong>INV-2024-006</strong> rejected</span>
+                            <span class="activity-time">3 days ago</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ─── INVOICE TABLE ─── -->
+        <section class="card table-card" id="tableCard">
+            <div class="table-header">
+                <div class="table-header-left">
+                    <h2 class="card-title">Recent Invoices</h2>
+                    <div class="table-tabs" id="tableTabs">
+                        <button class="tab active" data-filter="all">All</button>
+                        <button class="tab" data-filter="Under Review">In Review</button>
+                        <button class="tab" data-filter="Approved">Approved</button>
+                        <button class="tab" data-filter="Funded">Funded</button>
+                    </div>
+                </div>
+                <a href="#" class="btn-primary btn-sm" id="newInvoiceBtn">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    New Invoice
+                </a>
+            </div>
+            <div class="table-scroll">
+                <table class="invoice-table" id="invoiceTable">
+                    <thead>
+                        <tr>
+                            <th>Invoice ID</th>
+                            <th>Company</th>
+                            <th>Amount</th>
+                            <th>Due Date</th>
+                            <th>Risk</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-status="Funded">
+                            <td class="td-id">INV-2024-001</td>
+                            <td>Tata Steel</td>
+                            <td class="td-amount">₹4,85,000</td>
+                            <td>Mar 15</td>
+                            <td><span class="badge risk-low">Low</span></td>
+                            <td><span class="badge status-funded">Funded</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                        <tr data-status="Approved">
+                            <td class="td-id">INV-2024-002</td>
+                            <td>Reliance Retail</td>
+                            <td class="td-amount">₹1,27,500</td>
+                            <td>Mar 28</td>
+                            <td><span class="badge risk-low">Low</span></td>
+                            <td><span class="badge status-approved">Approved</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                        <tr data-status="Under Review">
+                            <td class="td-id">INV-2024-003</td>
+                            <td>Infosys BPO</td>
+                            <td class="td-amount">₹63,200</td>
+                            <td>Apr 5</td>
+                            <td><span class="badge risk-medium">Medium</span></td>
+                            <td><span class="badge status-review">Under Review</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                        <tr data-status="Submitted">
+                            <td class="td-id">INV-2024-004</td>
+                            <td>HDFC Bank</td>
+                            <td class="td-amount">₹2,90,000</td>
+                            <td>Apr 12</td>
+                            <td><span class="badge risk-low">Low</span></td>
+                            <td><span class="badge status-submitted">Submitted</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                        <tr data-status="Draft">
+                            <td class="td-id">INV-2024-005</td>
+                            <td>Zomato India</td>
+                            <td class="td-amount">₹41,800</td>
+                            <td>Apr 20</td>
+                            <td><span class="badge risk-high">High</span></td>
+                            <td><span class="badge status-draft">Draft</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                        <tr data-status="Rejected">
+                            <td class="td-id">INV-2024-006</td>
+                            <td>Wipro Ltd</td>
+                            <td class="td-amount">₹1,78,000</td>
+                            <td>Apr 30</td>
+                            <td><span class="badge risk-high">High</span></td>
+                            <td><span class="badge status-rejected">Rejected</span></td>
+                            <td><button class="btn-ghost-sm">View</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <script src="dashboard.js"></script>
+    <script>
+        (function () {
+            /* ─── 1) User name from localStorage ─── */
+            const name = localStorage.getItem('invoiceflow_user');
+            if (name) {
+                const first = name.split(' ')[0];
+                const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                const h = new Date().getHours();
+                const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+                document.getElementById('dashGreeting').textContent = greet + ', ' + first + ' 👋';
+                document.getElementById('sidebarName').textContent = name;
+                document.getElementById('sidebarAvatar').textContent = initials;
+            }
+
+            /* ─── 2) Live date & time ─── */
+            function updateDateTime() {
+                const now = new Date();
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+                const h = now.getHours();
+                const m = now.getMinutes().toString().padStart(2, '0');
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 || 12;
+                const dateStr = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear() + ' · ' + h12 + ':' + m + ' ' + ampm;
+                document.getElementById('dashDate').textContent = dateStr;
+            }
+            updateDateTime();
+            setInterval(updateDateTime, 30000);
+
+            /* ─── 3) Search invoices by company name ─── */
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const query = this.value.toLowerCase().trim();
+                    const rows = document.querySelectorAll('#invoiceTable tbody tr');
+                    rows.forEach(row => {
+                        const company = row.children[1]?.textContent.toLowerCase() || '';
+                        const invoiceId = row.children[0]?.textContent.toLowerCase() || '';
+                        row.style.display = (company.includes(query) || invoiceId.includes(query)) ? '' : 'none';
+                    });
+                });
+            }
+
+            /* ─── 4) Notification bell dropdown ─── */
+            const notifBtn = document.getElementById('notificationBtn');
+            const notifDropdown = document.getElementById('notifDropdown');
+            const notifDot = document.getElementById('notifDot');
+            const notifClear = document.getElementById('notifClear');
+            const notifList = document.getElementById('notifList');
+            const notifEmpty = document.getElementById('notifEmpty');
+
+            if (notifBtn && notifDropdown) {
+                notifBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    notifDropdown.classList.toggle('open');
+                });
+                document.addEventListener('click', function (e) {
+                    if (!notifDropdown.contains(e.target)) {
+                        notifDropdown.classList.remove('open');
+                    }
+                });
+            }
+
+            if (notifClear) {
+                notifClear.addEventListener('click', function () {
+                    notifList.style.display = 'none';
+                    notifEmpty.style.display = 'block';
+                    notifDot.style.display = 'none';
+                });
+            }
+        })();
+    </script>
+</body>
+
+</html>

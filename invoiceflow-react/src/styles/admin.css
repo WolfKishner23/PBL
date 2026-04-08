@@ -1,0 +1,561 @@
+/* ═══════════════════════════════════════════════════
+   InvoiceFlow Admin Dashboard — Styles
+   Mission control aesthetic · extends dashboard.css
+   ═══════════════════════════════════════════════════ */
+
+/* ═══════════════════ SYSTEM STATUS PILL ═══════════════════ */
+.system-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    background: rgba(34, 197, 94, .06);
+    border: 1px solid rgba(34, 197, 94, .15);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: statusPulse 2s ease-in-out infinite;
+}
+
+.status-dot.green {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(34, 197, 94, .4);
+}
+
+.status-dot.amber {
+    background: var(--amber);
+    box-shadow: 0 0 8px rgba(245, 158, 11, .4);
+}
+
+@keyframes statusPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .6;
+    }
+}
+
+.status-text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: .5px;
+}
+
+/* Admin avatar accent */
+.admin-avatar {
+    background: linear-gradient(135deg, var(--blue), #8B5CF6) !important;
+}
+
+/* ═══════════════════ ADMIN CONTENT CARD ═══════════════════ */
+.admin-content-card {
+    overflow: hidden;
+    animation: cardEnter .5s var(--ease) .25s both;
+}
+
+@keyframes cardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ═══════════════════ ADMIN TABS ═══════════════════ */
+.admin-tabs-bar {
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-dim);
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 0;
+}
+
+.admin-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-400);
+    background: none;
+    border: none;
+    padding: 16px 20px;
+    cursor: pointer;
+    position: relative;
+    transition: color .25s var(--ease);
+}
+
+.admin-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--blue);
+    border-radius: 2px 2px 0 0;
+    opacity: 0;
+    transition: opacity .25s var(--ease);
+}
+
+.admin-tab:hover {
+    color: var(--gray-200);
+}
+
+.admin-tab.active {
+    color: var(--white);
+}
+
+.admin-tab.active::after {
+    opacity: 1;
+}
+
+.admin-tab.active svg {
+    color: var(--blue);
+}
+
+/* ═══════════════════ TAB PANELS ═══════════════════ */
+.tab-panel {
+    padding: 24px;
+    animation: panelFade .3s var(--ease);
+}
+
+@keyframes panelFade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ═══════════════════ USERS TABLE ═══════════════════ */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.table-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.table-avatar.blue {
+    background: rgba(59, 130, 246, .25);
+    color: var(--blue);
+}
+
+.table-avatar.green {
+    background: rgba(34, 197, 94, .2);
+    color: var(--green);
+}
+
+.table-avatar.red {
+    background: rgba(239, 68, 68, .2);
+    color: var(--red);
+}
+
+.table-avatar.amber {
+    background: rgba(245, 158, 11, .2);
+    color: var(--amber);
+}
+
+.table-avatar.purple {
+    background: rgba(168, 85, 247, .2);
+    color: var(--purple);
+}
+
+.table-user-name {
+    font-weight: 600;
+    color: var(--white);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.td-email {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gray-300);
+}
+
+/* ─── Badges ─── */
+.role-business {
+    color: var(--blue);
+    background: rgba(59, 130, 246, .1);
+}
+
+.role-finance {
+    color: var(--purple);
+    background: rgba(168, 85, 247, .1);
+}
+
+.status-active {
+    color: var(--green);
+    background: rgba(34, 197, 94, .1);
+}
+
+.status-suspended {
+    color: var(--red);
+    background: rgba(239, 68, 68, .1);
+}
+
+/* ─── Action Buttons ─── */
+.td-actions-admin {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-icon-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border-dim);
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: all .2s var(--ease);
+}
+
+.btn-icon-action:hover {
+    color: var(--blue);
+    border-color: rgba(59, 130, 246, .3);
+    background: rgba(59, 130, 246, .08);
+}
+
+.btn-suspend {
+    font-family: var(--font-head);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--red);
+    background: rgba(239, 68, 68, .08);
+    border: 1px solid rgba(239, 68, 68, .2);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .2s var(--ease);
+}
+
+.btn-suspend:hover {
+    background: rgba(239, 68, 68, .18);
+    border-color: rgba(239, 68, 68, .4);
+    box-shadow: 0 0 12px rgba(239, 68, 68, .12);
+    transform: translateY(-1px);
+}
+
+.btn-restore {
+    font-family: var(--font-head);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    background: rgba(34, 197, 94, .08);
+    border: 1px solid rgba(34, 197, 94, .2);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .2s var(--ease);
+}
+
+.btn-restore:hover {
+    background: rgba(34, 197, 94, .18);
+    border-color: rgba(34, 197, 94, .4);
+    box-shadow: 0 0 12px rgba(34, 197, 94, .12);
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════ ANALYTICS GRID ═══════════════════ */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.analytics-card {
+    background: rgba(255, 255, 255, .02);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    transition: border-color .25s var(--ease);
+    animation: analyticsFadeIn .4s var(--ease) both;
+}
+
+.analytics-card:nth-child(1) {
+    animation-delay: .05s;
+}
+
+.analytics-card:nth-child(2) {
+    animation-delay: .1s;
+}
+
+.analytics-card:nth-child(3) {
+    animation-delay: .15s;
+}
+
+.analytics-card:nth-child(4) {
+    animation-delay: .2s;
+}
+
+@keyframes analyticsFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analytics-card:hover {
+    border-color: rgba(255, 255, 255, .1);
+}
+
+.analytics-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.analytics-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-400);
+}
+
+.analytics-value {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--white);
+    display: block;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+}
+
+.analytics-sub {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--gray-400);
+}
+
+.analytics-bar-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, .06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.analytics-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .8s var(--ease);
+}
+
+.analytics-bar-fill.green {
+    background: var(--green);
+}
+
+.analytics-bar-fill.blue {
+    background: var(--blue);
+}
+
+.analytics-bar-fill.amber {
+    background: var(--amber);
+}
+
+.analytics-bar-fill.purple {
+    background: var(--purple);
+}
+
+/* ═══════════════════ SYSTEM HEALTH GRID ═══════════════════ */
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.health-card {
+    background: rgba(255, 255, 255, .02);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .25s var(--ease);
+    animation: healthFadeIn .4s var(--ease) both;
+}
+
+.health-card:nth-child(1) {
+    animation-delay: .05s;
+}
+
+.health-card:nth-child(2) {
+    animation-delay: .1s;
+}
+
+.health-card:nth-child(3) {
+    animation-delay: .15s;
+}
+
+.health-card:nth-child(4) {
+    animation-delay: .2s;
+}
+
+.health-card:nth-child(5) {
+    animation-delay: .25s;
+}
+
+.health-card:nth-child(6) {
+    animation-delay: .3s;
+}
+
+@keyframes healthFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.health-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 10px 10px 0 0;
+}
+
+.health-card.healthy::before {
+    background: var(--green);
+}
+
+.health-card.warning::before {
+    background: var(--amber);
+}
+
+.health-card.warning {
+    border-color: rgba(245, 158, 11, .2);
+}
+
+.health-card:hover {
+    border-color: rgba(255, 255, 255, .1);
+}
+
+.health-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.health-dot.green {
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(34, 197, 94, .4);
+}
+
+.health-dot.amber {
+    background: var(--amber);
+    box-shadow: 0 0 6px rgba(245, 158, 11, .4);
+    animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+.health-status {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.health-status.warn {
+    color: var(--amber);
+}
+
+.health-name {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+}
+
+.health-detail {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gray-400);
+}
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media (max-width: 1080px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .health-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .health-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-tabs {
+        overflow-x: auto;
+    }
+
+    .tab-panel {
+        padding: 16px;
+    }
+
+    .system-status-pill {
+        display: none;
+    }
+}
