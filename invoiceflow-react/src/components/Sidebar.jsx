@@ -17,10 +17,12 @@ const financeNavItems = [
 ];
 
 const adminNavItems = [
-    { to: '/admin', icon: 'grid', label: 'Admin', section: 'admin' },
     { to: '/admin', icon: 'users', label: 'Users', section: 'users' },
-    { to: '/admin', icon: 'invoice', label: 'Invoices', section: 'invoices' },
+    { to: '/admin', icon: 'business', label: 'Business Owners', section: 'business' },
+    { to: '/admin', icon: 'finance', label: 'Finance Partners', section: 'finance' },
     { to: '/admin', icon: 'analytics', label: 'Analytics', section: 'analytics' },
+    { to: '/admin', icon: 'health', label: 'System Health', section: 'health' },
+    { to: '/admin', icon: 'feedback', label: 'Feedback', section: 'feedback' },
 ];
 
 const icons = {
@@ -68,6 +70,30 @@ const icons = {
             <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" strokeWidth="1.3" />
         </svg>
     ),
+    business: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 17V7l7-4 7 4v10H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M10 13v4M7 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+    ),
+    finance: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M7 10h6M10 7v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+    ),
+    health: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <rect x="5" y="5" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+    ),
+    feedback: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+    ),
     logout: (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -82,9 +108,14 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
     const { user, logout } = useAuth();
     const items = variant === 'finance' ? financeNavItems : variant === 'admin' ? adminNavItems : navItems;
 
-    const userName = user?.name || localStorage.getItem('invoiceflow_user') || (variant === 'admin' ? 'Super Admin' : 'User');
-    const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const userRole = user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner';
+    const isAdmin = variant === 'admin';
+    const adminNameFromStorage = localStorage.getItem('invoiceflow_admin');
+    const adminRoleFromStorage = localStorage.getItem('invoiceflow_admin_role');
+    const adminAvatarFromStorage = localStorage.getItem('invoiceflow_admin_avatar');
+    
+    const userName = isAdmin ? (adminNameFromStorage || 'Admin') : (user?.name || localStorage.getItem('invoiceflow_user') || 'User');
+    const initials = isAdmin ? (adminAvatarFromStorage || userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)) : userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const userRole = isAdmin ? (adminRoleFromStorage || 'Admin') : (user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner');
     const userEmail = user?.email || 'user@invoiceflow.in';
     const businessName = user?.company || 'InvoiceFlow Business';
 

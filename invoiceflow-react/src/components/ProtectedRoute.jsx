@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 export default function ProtectedRoute({ children, roles }) {
     const { user, token, loading } = useAuth();
 
+    // Check for admin localStorage session (admin login doesn't use JWT)
+    const adminName = localStorage.getItem('invoiceflow_admin');
+    const isAdminSession = !!adminName;
+
     if (loading) {
         return (
             <div style={{
@@ -14,6 +18,11 @@ export default function ProtectedRoute({ children, roles }) {
                 Loading...
             </div>
         );
+    }
+
+    // If this route requires the 'admin' role, allow admin localStorage sessions
+    if (roles && roles.includes('admin') && isAdminSession) {
+        return children;
     }
 
     if (!token) {

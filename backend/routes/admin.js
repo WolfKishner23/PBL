@@ -9,9 +9,20 @@ const {
     deleteUser
 } = require('../controllers/adminController');
 
-// All admin routes require auth + admin role
-router.use(auth);
-router.use(authorize('admin'));
+// Middleware: accept either ADMIN_SECRET header (frontend admin panel)
+// OR a valid JWT with admin role
+const adminAccess = (req, res, next) => {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret && adminSecret === process.env.ADMIN_SECRET) {
+        // Frontend admin panel — skip JWT, inject a mock admin user
+        req.user = { id: 0, name: 'Admin', role: 'admin', isSuspended: false };
+        return next();
+    }
+    // Otherwise fall through normal JWT auth + RBAC
+    auth(req, res, () => authorize('admin')(req, res, next));
+};
+
+router.use(adminAccess);
 
 // GET    /api/admin/stats       — Dashboard statistics
 router.get('/stats', getDashboardStats);

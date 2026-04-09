@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import API from '../services/api';
 import '../styles/legal.css';
 
 export default function ContactPage() {
@@ -10,16 +11,25 @@ export default function ContactPage() {
         message: ''
     });
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitted(true);
-        setTimeout(() => setSubmitted(false), 4000);
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        setLoading(true);
+        try {
+            await API.post('/feedback', formData);
+            setSubmitted(true);
+            setTimeout(() => setSubmitted(false), 4000);
+            setFormData({ name: '', email: '', subject: '', message: '' });
+        } catch (err) {
+            console.error('Failed to submit feedback:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -155,9 +165,9 @@ export default function ContactPage() {
                                     required
                                 />
                             </div>
-                            <button type="submit" className="contact-submit-btn">
-                                Send Message
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <button type="submit" className="contact-submit-btn" disabled={loading}>
+                                {loading ? 'Sending...' : 'Send Message'}
+                                {!loading && <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </button>
                         </form>
                     </div>
