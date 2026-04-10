@@ -977,3 +977,35 @@
     min-width: 44px;
     text-align: right;
 }
+
+/* Password Eye Icon Styles */
+.pw-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.pw-wrapper .form-input {
+    width: 100%;
+    padding-right: 44px;
+}
+.btn-eye {
+    position: absolute;
+    right: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    color: var(--gray-400);
+    transition: color 0.2s;
+}
+.btn-eye:hover {
+    color: var(--gray-200);
+}
+
+/* Hide default browser reveal icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}

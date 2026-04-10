@@ -24,7 +24,7 @@ app.use(cors({
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-secret'],
     credentials: true
 }));
 
@@ -41,6 +41,7 @@ app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/factoring', require('./routes/factoring'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/feedback', require('./routes/feedback'));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

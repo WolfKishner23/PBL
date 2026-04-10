@@ -6,11 +6,14 @@ import '../styles/auth.css';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const navigate = useNavigate();
     const { login } = useAuth();
+    
+    const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin', company: '/dashboard' };
 
     function validateEmail(val) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,11 +43,14 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
+            console.log('Attempting login for:', email);
             const user = await login(email, password);
-            const roleRoutes = { business: '/dashboard', finance: '/finance', admin: '/admin' };
-            navigate(roleRoutes[user.role] || '/dashboard');
+            console.log('Login successful, user:', user);
+            console.log('Navigating to:', roleRoutes[user.role] || '/dashboard');
+            navigate(roleRoutes[user.role] || '/dashboard', { replace: true });
         } catch (err) {
-            setError(err.response?.data?.error || 'Login failed. Please try again.');
+            console.error('Login error:', err);
+            setError(err.response?.data?.error || err.message || 'Login failed. Please try again.');
             setLoading(false);
         }
     }
@@ -113,15 +119,38 @@ export default function LoginPage() {
                                     <label className="form-label" htmlFor="loginPassword">Password</label>
                                     <Link to="/forgot" className="form-link">Forgot password?</Link>
                                 </div>
-                                <input
-                                    type="password"
-                                    className={`form-input${fieldErrors.password ? ' input-error' : ''}`}
-                                    id="loginPassword"
-                                    placeholder="••••••••"
-                                    required
-                                    value={password}
-                                    onChange={e => handlePasswordChange(e.target.value)}
-                                />
+                                <div className="pw-wrapper">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className={`form-input${fieldErrors.password ? ' input-error' : ''}`}
+                                        id="loginPassword"
+                                        placeholder="••••••••"
+                                        required
+                                        value={password}
+                                        onChange={e => handlePasswordChange(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn-eye"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        aria-label="Toggle password"
+                                        tabIndex="-1"
+                                    >
+                                        {showPassword ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                            </svg>
+                                        ) : (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
                                 {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
                             </div>
                             <button type="submit" className="btn-auth-primary" disabled={loading}>
@@ -132,6 +161,13 @@ export default function LoginPage() {
                         <p className="auth-footer-text">
                             Don't have an account? <Link to="/register" className="form-link">Sign up</Link>
                         </p>
+
+                        <Link to="/admin-login" className="auth-back-link" style={{ marginTop: '20px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            Admin Portal
+                        </Link>
                     </div>
                 </div>
 

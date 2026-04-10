@@ -13,41 +13,100 @@ const healthServices = [
     { name: 'Email Service', status: 'Healthy', uptime: '99.97%', latency: '95ms' },
 ];
 
+const SECTIONS = {
+    users: { label: 'Users', icon: 'users' },
+    business: { label: 'Business Owners', icon: 'business' },
+    finance: { label: 'Finance Partners', icon: 'finance' },
+    analytics: { label: 'Analytics', icon: 'analytics' },
+    health: { label: 'System Health', icon: 'health' },
+};
+
 export default function AdminDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [tab, setTab] = useState('users');
+    const [activeSection, setActiveSection] = useState('users');
+    const [roleFilter, setRoleFilter] = useState('');
     const [users, setUsers] = useState([]);
     const [stats, setStats] = useState(null);
+    const [feedbacks, setFeedbacks] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const adminName = localStorage.getItem('invoiceflow_admin') || 'Admin';
+
+    const handleSectionClick = (section) => {
+        if (section === 'users') {
+            setRoleFilter('');
+            setActiveSection('users');
+        } else if (section === 'business') {
+            setRoleFilter('business');
+            setActiveSection('users');
+        } else if (section === 'finance') {
+            setRoleFilter('finance');
+            setActiveSection('users');
+        } else if (section === 'feedback') {
+            setActiveSection('feedback');
+        } else {
+            setActiveSection(section);
+        }
+    };
 
     // Fetch users and stats from API
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true);
+            setError(null);
             try {
+                console.log('Fetching admin data, roleFilter:', roleFilter);
+                const params = roleFilter ? { role: roleFilter } : {};
+                console.log('API params:', params);
+                
                 const [usersRes, statsRes] = await Promise.all([
-                    adminAPI.getUsers(),
+                    adminAPI.getUsers(params),
                     adminAPI.getStats()
                 ]);
-                setUsers((usersRes.data.users || []).map(u => ({
+                
+                console.log('Raw usersRes:', usersRes);
+                console.log('Raw statsRes:', statsRes);
+                console.log('usersRes.data:', usersRes.data);
+                console.log('statsRes.data:', statsRes.data);
+                
+                const usersData = usersRes.data;
+                const statsData = statsRes.data;
+                
+                setUsers((usersData.users || []).map(u => ({
                     id: u.id,
                     name: u.name,
                     initials: u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
                     email: u.email,
                     role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
-                    status: u.isSuspended ? 'Suspended' : 'Active',
+                    status: u.isSuspended ? 'Suspended' : u.isVerified ? 'Active' : 'Pending',
                     invoices: u.invoiceCount || 0,
                     joined: new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
                 })));
-                setStats(statsRes.data);
+                
+                // Handle both stats.stats and stats direct
+                setStats(statsData.stats || statsData);
             } catch (err) {
                 console.error('Failed to fetch admin data:', err);
+                setError(err.response?.data?.error || err.message || 'Failed to fetch data');
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
-    }, []);
+    }, [roleFilter]);
+
+    // Fetch feedbacks when feedback section is active
+    useEffect(() => {
+        if (activeSection === 'feedback') {
+            adminAPI.getFeedbacks()
+                .then(res => {
+                    setFeedbacks(res.data.feedbacks || res.data || []);
+                })
+                .catch(err => console.error('Failed to fetch feedbacks:', err));
+        }
+    }, [activeSection]);
 
     async function toggleSuspend(index) {
         const user = users[index];
@@ -68,7 +127,7 @@ export default function AdminDashboard() {
 
     return (
         <>
-            <Sidebar variant="admin" activeSection="admin" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Sidebar variant="admin" activeSection={activeSection} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onSectionClick={handleSectionClick} />
             <main className="main">
                 <header className="header-bar">
                     <div className="header-left">
@@ -76,7 +135,7 @@ export default function AdminDashboard() {
                             <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                         </button>
                         <div>
-                            <h1 className="header-greeting">Admin Dashboard</h1>
+                            <h1 className="header-greeting">Welcome back, {adminName}</h1>
                             <span className="system-status-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: 'rgba(16,185,129,.1)', borderRadius: '20px', fontSize: '12px', color: 'var(--green)', fontWeight: 500, marginTop: '4px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }}></span>
                                 All Systems Operational
@@ -93,31 +152,45 @@ export default function AdminDashboard() {
 
                 {/* Stat Cards */}
                 <section className="stat-cards">
+                    {error && (
+                        <div style={{ gridColumn: '1 / -1', padding: '16px', background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', borderRadius: '8px', color: 'var(--red)', marginBottom: '16px' }}>
+                            Error: {error}
+                        </div>
+                    )}
                     {[
-                        { label: 'Total Users', value: stats?.totalUsers?.toString() || users.length.toString(), change: `${users.filter(u => u.status === 'Active').length} active`, accent: 'blue' },
-                        { label: 'Invoice Volume', value: stats?.totalInvoiceVolume ? `₹${(stats.totalInvoiceVolume / 10000000).toFixed(1)}Cr` : `${users.reduce((a, b) => a + b.invoices, 0)} invoices`, change: '', accent: 'green' },
-                        { label: 'Approval Rate', value: stats?.approvalRate ? `${stats.approvalRate}%` : '—', change: '', accent: 'amber' },
-                        { label: 'Default Rate', value: stats?.defaultRate ? `${stats.defaultRate}%` : '1.2%', change: '', accent: 'purple' },
+                        { label: 'Total Users', value: stats?.totalUsers?.toString() || '0', accent: 'blue' },
+                        { label: 'Total Invoices', value: stats?.totalInvoices?.toString() || '0', accent: 'green' },
+                        { label: 'Pending Invoices', value: stats?.pendingInvoices?.toString() || '0', accent: 'amber' },
+                        { label: 'Funded Invoices', value: stats?.fundedInvoices?.toString() || '0', accent: 'purple' },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top"><span className="stat-card-label">{s.label}</span></div>
                             <div className="stat-card-value">{s.value}</div>
-                            {s.change && <div className="stat-card-change"><span className={`change-badge ${s.accent}`}>{s.change}</span></div>}
                         </div>
                     ))}
                 </section>
 
-                {/* Tabs */}
-                <div className="admin-tabs" style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
-                    {['users', 'analytics', 'health'].map(t => (
-                        <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)} style={{ padding: '10px 20px' }}>
-                            {t === 'users' ? 'Users' : t === 'analytics' ? 'Analytics' : 'System Health'}
+                {/* Role Filter Tabs */}
+                <div className="admin-tabs" style={{ display: 'flex', gap: '4px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto' }}>
+                    {[
+                        { key: '', label: 'All Users' },
+                        { key: 'business', label: 'Business Owners' },
+                        { key: 'finance', label: 'Finance Partners' },
+                    ].map(t => (
+                        <button key={t.key} className={`tab${roleFilter === t.key ? ' active' : ''}`} onClick={() => { setRoleFilter(t.key); setActiveSection('users'); }} style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}>
+                            {t.label}
+                        </button>
+                    ))}
+                    <span style={{ width: '1px', background: 'var(--border-dim)', margin: '0 8px' }}></span>
+                    {['analytics', 'health', 'feedback'].map(t => (
+                        <button key={t} className={`tab${activeSection === t ? ' active' : ''}`} onClick={() => setActiveSection(t)} style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}>
+                            {t === 'analytics' ? 'Analytics' : t === 'health' ? 'System Health' : 'Feedback'}
                         </button>
                     ))}
                 </div>
 
                 {/* Users Tab */}
-                {tab === 'users' && (
+                {activeSection === 'users' && (
                     <section className="card table-card">
                         <div className="table-scroll">
                             <table className="invoice-table">
@@ -164,7 +237,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* Analytics Tab */}
-                {tab === 'analytics' && (
+                {activeSection === 'analytics' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         {[
                             { label: 'Monthly Invoice Volume', value: '₹3.2Cr', trend: '↑ 18%', progress: 72, color: 'var(--blue)' },
@@ -187,7 +260,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* System Health Tab */}
-                {tab === 'health' && (
+                {activeSection === 'health' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                         {healthServices.map((s, i) => (
                             <div className="card" key={i} style={{ padding: '20px' }}>
@@ -202,6 +275,52 @@ export default function AdminDashboard() {
                             </div>
                         ))}
                     </div>
+                )}
+
+                {/* Feedback Tab */}
+                {activeSection === 'feedback' && (
+                    <section className="card table-card">
+                        <div className="table-scroll">
+                            <table className="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Subject</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {feedbacks.length === 0 ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No feedback yet</td></tr>
+                                    ) : feedbacks.map((f, i) => (
+                                        <tr key={f.id || i}>
+                                            <td>{f.name}</td>
+                                            <td style={{ color: 'var(--gray-400)' }}>{f.email}</td>
+                                            <td><span className="badge status-review">{f.subject}</span></td>
+                                            <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.message}</td>
+                                            <td><span className={`badge ${f.isRead ? 'status-funded' : 'status-review'}`}>{f.isRead ? 'Read' : 'New'}</span></td>
+                                            <td style={{ color: 'var(--gray-400)' }}>{new Date(f.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                            <td>
+                                                <button className="btn-ghost-sm" onClick={() => {
+                                                    if (!f.isRead) {
+                                                        adminAPI.markFeedbackRead(f.id).then(() => {
+                                                            setFeedbacks(prev => prev.map(item => item.id === f.id ? { ...item, isRead: true } : item));
+                                                        });
+                                                    }
+                                                }}>
+                                                    {f.isRead ? 'Mark Unread' : 'Mark Read'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 )}
             </main>
         </>

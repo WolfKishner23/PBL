@@ -10,7 +10,8 @@ exports.getDashboardStats = async (req, res) => {
         const totalInvoices = await Invoice.count();
         const totalTransactions = await Transaction.count();
 
-        const pendingInvoices = await Invoice.count({ where: { status: 'submitted' } });
+        // Count pending invoices (submitted or review status)
+        const pendingInvoices = await Invoice.count({ where: { status: { [Op.in]: ['submitted', 'review'] } } });
         const approvedInvoices = await Invoice.count({ where: { status: 'approved' } });
         const fundedInvoices = await Invoice.count({ where: { status: 'funded' } });
 
@@ -56,9 +57,15 @@ exports.getAllUsers = async (req, res) => {
             offset
         });
 
+        // Get invoice count for each user
+        const usersWithInvoiceCount = await Promise.all(users.map(async (user) => {
+            const invoiceCount = await Invoice.count({ where: { uploadedBy: user.id } });
+            return { ...user.toJSON(), invoiceCount };
+        }));
+
         res.json({
             success: true,
-            users,
+            users: usersWithInvoiceCount,
             pagination: {
                 total,
                 page: parseInt(page),

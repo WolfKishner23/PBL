@@ -8,24 +8,31 @@ const API = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 
-// Attach JWT token to every request
+// Attach JWT token to every request; also attach admin secret if admin session is active
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem('invoiceflow_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    const adminName = localStorage.getItem('invoiceflow_admin');
+    if (adminName) {
+        config.headers['x-admin-secret'] = 'invoiceflow-admin-secret-2024';
+    }
     return config;
 });
 
-// Redirect to /login on 401 responses
+// Redirect to /login on 401 responses (skip if admin session is active)
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            localStorage.removeItem('invoiceflow_token');
-            localStorage.removeItem('invoiceflow_user');
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+            const isAdminSession = !!localStorage.getItem('invoiceflow_admin');
+            if (!isAdminSession) {
+                localStorage.removeItem('invoiceflow_token');
+                localStorage.removeItem('invoiceflow_user');
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
             }
         }
         return Promise.reject(error);
@@ -70,6 +77,9 @@ export const adminAPI = {
     verifyUser: (id) => API.put(`/admin/users/${id}/verify`),
     suspendUser: (id) => API.put(`/admin/users/${id}/suspend`),
     deleteUser: (id) => API.delete(`/admin/users/${id}`),
+    getFeedbacks: () => API.get('/feedback'),
+    markFeedbackRead: (id) => API.put(`/feedback/${id}/read`),
+    deleteFeedback: (id) => API.delete(`/feedback/${id}`),
 };
 
 // ─── AI API ───────────────────────────────────────────────────────────────────
