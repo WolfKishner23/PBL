@@ -1,5 +1,0 @@
-﻿* Shrawani
-  main
-  remotes/origin/HEAD -> origin/main
-  remotes/origin/Shrawani
-  remotes/origin/main

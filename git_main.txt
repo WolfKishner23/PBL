@@ -1,6 +1,0 @@
-﻿commit ee09f808d2cb3e2ed48c607015186cfb3e2f54d8
-Merge: 1ba4b26 6b372cc
-Author: WolfKishner23 <natekar071@gmail.com>
-Date:   Sat Apr 4 22:44:26 2026 +0530
-
-    Merge remote: resolved conflicts, restored route files, added admin login features
