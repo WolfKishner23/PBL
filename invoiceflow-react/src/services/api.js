@@ -10,13 +10,18 @@ const API = axios.create({
 
 // Attach JWT token to every request; also attach admin secret if admin session is active
 API.interceptors.request.use((config) => {
-    const token = localStorage.getItem('invoiceflow_token');
+    const token = localStorage.getItem('invoiceflow_token') || localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        // console.log('🔹 JWT Attached:', token.substring(0, 15) + '...');
+    } else {
+        // console.warn('🔸 No JWT token found in localStorage');
     }
+    
     const adminName = localStorage.getItem('invoiceflow_admin');
     if (adminName) {
         config.headers['x-admin-secret'] = 'invoiceflow-admin-secret-2024';
+        // console.log('🔹 Admin Secret Attached');
     }
     return config;
 });
@@ -59,6 +64,7 @@ export const invoiceAPI = {
     uploadPDF: (id, formData) => API.post(`/invoices/${id}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    confirm: (id) => API.post(`/invoices/${id}/confirm`),
 };
 
 // ─── Factoring API ────────────────────────────────────────────────────────────
@@ -68,12 +74,15 @@ export const factoringAPI = {
     reject: (id, reason) => API.put(`/factoring/${id}/reject`, { rejectionReason: reason }),
     fund: (id, data) => API.post(`/factoring/${id}/fund`, data),
     getTransactions: (params) => API.get('/factoring/transactions', { params }),
+    pay: (id) => API.post(`/factoring/${id}/pay`),
+    settle: (id) => API.post(`/factoring/${id}/settle`),
 };
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
 export const adminAPI = {
     getStats: () => API.get('/admin/stats'),
     getUsers: (params) => API.get('/admin/users', { params }),
+    getInvoices: (params) => API.get('/admin/invoices', { params }),
     verifyUser: (id) => API.put(`/admin/users/${id}/verify`),
     suspendUser: (id) => API.put(`/admin/users/${id}/suspend`),
     deleteUser: (id) => API.delete(`/admin/users/${id}`),

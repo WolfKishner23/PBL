@@ -15,8 +15,9 @@ const healthServices = [
 
 const SECTIONS = {
     users: { label: 'Users', icon: 'users' },
-    business: { label: 'Business Owners', icon: 'business' },
+    company: { label: 'Companies', icon: 'business' },
     finance: { label: 'Finance Partners', icon: 'finance' },
+    invoices: { label: 'Invoices', icon: 'invoice' },
     analytics: { label: 'Analytics', icon: 'analytics' },
     health: { label: 'System Health', icon: 'health' },
 };
@@ -26,10 +27,12 @@ export default function AdminDashboard() {
     const [activeSection, setActiveSection] = useState('users');
     const [roleFilter, setRoleFilter] = useState('');
     const [users, setUsers] = useState([]);
+    const [invoices, setInvoices] = useState([]);
     const [stats, setStats] = useState(null);
     const [feedbacks, setFeedbacks] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [loadingInvoices, setLoadingInvoices] = useState(false);
     const [error, setError] = useState(null);
 
     const adminName = localStorage.getItem('invoiceflow_admin') || 'Admin';
@@ -38,8 +41,8 @@ export default function AdminDashboard() {
         if (section === 'users') {
             setRoleFilter('');
             setActiveSection('users');
-        } else if (section === 'business') {
-            setRoleFilter('business');
+        } else if (section === 'company') {
+            setRoleFilter('company');
             setActiveSection('users');
         } else if (section === 'finance') {
             setRoleFilter('finance');
@@ -96,6 +99,19 @@ export default function AdminDashboard() {
         };
         fetchData();
     }, [roleFilter]);
+
+    // Fetch invoices when invoices section is active
+    useEffect(() => {
+        if (activeSection === 'invoices') {
+            setLoadingInvoices(true);
+            adminAPI.getInvoices()
+                .then(res => {
+                    setInvoices(res.data.invoices || []);
+                })
+                .catch(err => console.error('Failed to fetch admin invoices:', err))
+                .finally(() => setLoadingInvoices(false));
+        }
+    }, [activeSection]);
 
     // Fetch feedbacks when feedback section is active
     useEffect(() => {
@@ -174,7 +190,7 @@ export default function AdminDashboard() {
                 <div className="admin-tabs" style={{ display: 'flex', gap: '4px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto' }}>
                     {[
                         { key: '', label: 'All Users' },
-                        { key: 'business', label: 'Business Owners' },
+                        { key: 'company', label: 'Companies' },
                         { key: 'finance', label: 'Finance Partners' },
                     ].map(t => (
                         <button key={t.key} className={`tab${roleFilter === t.key ? ' active' : ''}`} onClick={() => { setRoleFilter(t.key); setActiveSection('users'); }} style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}>
@@ -182,9 +198,9 @@ export default function AdminDashboard() {
                         </button>
                     ))}
                     <span style={{ width: '1px', background: 'var(--border-dim)', margin: '0 8px' }}></span>
-                    {['analytics', 'health', 'feedback'].map(t => (
+                    {['invoices', 'analytics', 'health', 'feedback'].map(t => (
                         <button key={t} className={`tab${activeSection === t ? ' active' : ''}`} onClick={() => setActiveSection(t)} style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}>
-                            {t === 'analytics' ? 'Analytics' : t === 'health' ? 'System Health' : 'Feedback'}
+                            {t === 'invoices' ? 'All Invoices' : t === 'analytics' ? 'Analytics' : t === 'health' ? 'System Health' : 'Feedback'}
                         </button>
                     ))}
                 </div>
@@ -236,14 +252,61 @@ export default function AdminDashboard() {
                     </section>
                 )}
 
+                {/* Invoices Tab */}
+                {activeSection === 'invoices' && (
+                    <section className="card table-card">
+                        <div className="table-scroll">
+                            <table className="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Seller</th>
+                                        <th>Buyer</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Risk</th>
+                                        <th>Funder</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loadingInvoices ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
+                                    ) : invoices.length === 0 ? (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
+                                    ) : invoices.map((inv, i) => (
+                                        <tr key={inv.id || i}>
+                                            <td>
+                                                <div style={{ fontWeight: 500 }}>{inv.uploader?.company || inv.uploader?.name}</div>
+                                                <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>{inv.invoiceNumber}</div>
+                                            </td>
+                                            <td>{inv.debtorCompany}</td>
+                                            <td className="mono" style={{ color: 'var(--white)' }}>₹{parseFloat(inv.amount).toLocaleString('en-IN')}</td>
+                                            <td><span className={`badge status-${inv.status}`}>{inv.status}</span></td>
+                                            <td><span className={`badge risk-${inv.riskLevel || 'medium'}`}>{inv.riskScore || '—'} ({inv.riskLevel || 'N/A'})</span></td>
+                                            <td>
+                                                {inv.transaction?.financier?.name ? (
+                                                    <span style={{ color: 'var(--blue)', fontSize: '13px' }}>{inv.transaction.financier.name}</span>
+                                                ) : (
+                                                    <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>—</span>
+                                                )}
+                                            </td>
+                                            <td style={{ color: 'var(--gray-400)' }}>{new Date(inv.createdAt).toLocaleDateString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )}
+
                 {/* Analytics Tab */}
                 {activeSection === 'analytics' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         {[
-                            { label: 'Monthly Invoice Volume', value: '₹3.2Cr', trend: '↑ 18%', progress: 72, color: 'var(--blue)' },
-                            { label: 'Avg. Risk Score', value: '72/100', trend: '↑ 3pts', progress: 72, color: 'var(--green)' },
-                            { label: 'Avg. Time to Fund', value: '36 hrs', trend: '↓ 4hrs', progress: 60, color: 'var(--amber)' },
-                            { label: 'Portfolio ROI', value: '3.4%', trend: '↑ 0.2%', progress: 68, color: 'var(--purple)' },
+                            { label: 'Total Amount Funded', value: `₹${(stats?.totalFunded || 0).toLocaleString('en-IN')}`, trend: 'Live', progress: 100, color: 'var(--blue)' },
+                            { label: 'Total Interest Earned', value: `₹${Math.round(stats?.totalInterestEarned || 0).toLocaleString('en-IN')}`, trend: 'Estimated', progress: 100, color: 'var(--green)' },
+                            { label: 'Platform Invoices', value: stats?.totalInvoices || 0, trend: 'Count', progress: 100, color: 'var(--amber)' },
+                            { label: 'Portfolio Performance', value: '3% Monthly', trend: 'Fixed', progress: 100, color: 'var(--purple)' },
                         ].map((m, i) => (
                             <div className="card" key={i} style={{ padding: '24px' }}>
                                 <span style={{ color: 'var(--gray-400)', fontSize: '13px' }}>{m.label}</span>

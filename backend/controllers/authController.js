@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
             name,
             email,
             password,
-            role: role || 'business',
+            role: role || 'company',
             company,
             gstNumber,
             industry
@@ -237,7 +237,7 @@ exports.registerValidation = [
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
     body('role')
         .optional()
-        .isIn(['business', 'finance', 'admin']).withMessage('Role must be business, finance, or admin')
+        .isIn(['company', 'finance', 'admin']).withMessage('Role must be company, finance, or admin')
 ];
 
 exports.loginValidation = [

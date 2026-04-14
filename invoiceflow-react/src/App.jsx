@@ -24,12 +24,12 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot" element={<ForgotPage />} />
           <Route path="/dashboard" element={
-            <ProtectedRoute roles={['business', 'company']}>
+            <ProtectedRoute roles={['company']}>
               <Dashboard />
             </ProtectedRoute>
           } />
           <Route path="/upload" element={
-            <ProtectedRoute roles={['business', 'company']}>
+            <ProtectedRoute roles={['company']}>
               <UploadPage />
             </ProtectedRoute>
           } />

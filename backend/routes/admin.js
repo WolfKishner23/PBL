@@ -4,6 +4,7 @@ const authorize = require('../middleware/rbac');
 const {
     getDashboardStats,
     getAllUsers,
+    getAllInvoices,
     verifyUser,
     suspendUser,
     deleteUser
@@ -29,6 +30,9 @@ router.get('/stats', getDashboardStats);
 
 // GET    /api/admin/users       — Get all users
 router.get('/users', getAllUsers);
+
+// GET    /api/admin/invoices    — Get all invoices
+router.get('/invoices', getAllInvoices);
 
 // PUT    /api/admin/users/:id/verify  — Verify user
 router.put('/users/:id/verify', verifyUser);

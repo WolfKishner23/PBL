@@ -36,10 +36,11 @@ exports.approveInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        if (!['submitted', 'review'].includes(invoice.status)) {
+        // Now requires confirmed status from Buyer (timeline step 2)
+        if (invoice.status !== 'confirmed') {
             return res.status(400).json({
                 success: false,
-                error: 'Only submitted or reviewed invoices can be approved'
+                error: 'Invoice must be confirmed by the Buyer before approval'
             });
         }
 
@@ -72,10 +73,10 @@ exports.rejectInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
-        if (!['submitted', 'review'].includes(invoice.status)) {
+        if (!['submitted', 'review', 'confirmed'].includes(invoice.status)) {
             return res.status(400).json({
                 success: false,
-                error: 'Only submitted or reviewed invoices can be rejected'
+                error: 'Only submitted, reviewed or confirmed invoices can be rejected'
             });
         }
 
@@ -151,7 +152,7 @@ exports.getTransactions = async (req, res) => {
         // Filter by role
         if (req.user.role === 'finance') {
             where.financierId = req.user.id;
-        } else if (req.user.role === 'business') {
+        } else if (req.user.role === 'company') {
             where.businessId = req.user.id;
         }
 
@@ -163,7 +164,7 @@ exports.getTransactions = async (req, res) => {
             include: [
                 { model: Invoice, as: 'invoice' },
                 { model: User, as: 'financier', attributes: ['id', 'name', 'company'] },
-                { model: User, as: 'business', attributes: ['id', 'name', 'company'] }
+                { model: User, as: 'company', attributes: ['id', 'name', 'company'] }
             ],
             order: [['createdAt', 'DESC']],
             limit: parseInt(limit),
@@ -181,6 +182,63 @@ exports.getTransactions = async (req, res) => {
         });
     } catch (error) {
         console.error('Get transactions error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── PAY INVOICE (Buyer pays on due date) ─────────────────────────────────────
+exports.payInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+        if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+        if (invoice.status !== 'funded') {
+            return res.status(400).json({ success: false, error: 'Only funded invoices can be paid' });
+        }
+
+        await invoice.update({ status: 'paid' });
+        res.json({ success: true, invoice });
+    } catch (error) {
+        console.error('Pay invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── SETTLE INVOICE (Seller/Admin closes invoice) ──────────────────────────────
+exports.settleInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+        if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+        if (invoice.status !== 'paid') {
+            return res.status(400).json({ success: false, error: 'Invoice must be paid by Buyer before settlement' });
+        }
+
+        const transaction = await Transaction.findOne({ where: { invoiceId: invoice.id } });
+        if (transaction) {
+            await transaction.update({ status: 'completed' });
+        }
+
+        await invoice.update({ status: 'closed' });
+
+        // Calculate summary data for frontend
+        const principal = parseFloat(transaction.fundedAmount);
+        const amount = parseFloat(invoice.amount);
+        const interest = principal * 0.03 * 1; // Assuming 1 month for simple message if diff not calculated
+        const profit = amount - principal - interest;
+
+        res.json({
+            success: true,
+            invoice,
+            summary: {
+                principal,
+                interest,
+                profit,
+                totalPaid: amount
+            }
+        });
+    } catch (error) {
+        console.error('Settle invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import Sidebar from '../components/Sidebar';
 import { invoiceAPI, factoringAPI } from '../services/api';
 import '../styles/dashboard.css';
@@ -23,6 +23,7 @@ export default function FinanceDashboard() {
     const [fundRate, setFundRate] = useState('5.0');
     const [activeSection, setActiveSection] = useState('finance');
     const [glowSection, setGlowSection] = useState(null);
+    const [fundingSummary, setFundingSummary] = useState(null);
 
     // Handle sidebar section click — scroll + glow
     function handleSectionClick(section) {
@@ -47,8 +48,8 @@ export default function FinanceDashboard() {
             const invoices = (res.data.invoices || []).map(inv => ({
                 id: inv.invoiceNumber || `INV-${inv.id}`,
                 dbId: inv.id,
-                company: inv.debtorCompany || inv.uploaderCompany || 'Unknown',
-                uploaderName: inv.uploaderName || 'Unknown',
+                seller: inv.uploaderCompany || inv.uploaderName || 'Unknown',
+                buyer: inv.debtorCompany || 'Unknown',
                 amount: `₹${parseFloat(inv.amount).toLocaleString('en-IN')}`,
                 rawAmount: parseFloat(inv.amount),
                 days: inv.dueDate ? Math.max(0, Math.ceil((new Date(inv.dueDate) - new Date()) / (1000 * 60 * 60 * 24))) : 0,
@@ -57,7 +58,7 @@ export default function FinanceDashboard() {
                 payment: inv.riskDetails?.paymentHistory || 0,
                 validity: inv.riskDetails?.invoiceValidity || 0,
                 industry: inv.riskDetails?.industryRisk || 0,
-                status: inv.status === 'review' || inv.status === 'submitted' ? 'pending' : inv.status,
+                status: (inv.status === 'review' || inv.status === 'submitted') ? 'pending' : inv.status,
                 rawStatus: inv.status,
             }));
             setQueue(invoices);
@@ -70,13 +71,16 @@ export default function FinanceDashboard() {
 
     const filtered = queue.filter(inv => {
         const matchTab = tab === 'all' || inv.status === tab;
-        const matchSearch = inv.company.toLowerCase().includes(search.toLowerCase()) || inv.id.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = 
+            (inv.seller && inv.seller.toLowerCase().includes(search.toLowerCase())) || 
+            (inv.buyer && inv.buyer.toLowerCase().includes(search.toLowerCase())) || 
+            (inv.id && inv.id.toLowerCase().includes(search.toLowerCase()));
         return matchTab && matchSearch;
     });
 
     // Stats
     const stats = {
-        queueSize: queue.filter(i => i.status === 'pending').length,
+        queueSize: queue.filter(i => i.status === 'pending' || i.status === 'confirmed').length,
         approved: queue.filter(i => i.status === 'approved').length,
         funded: queue.filter(i => i.status === 'funded').length,
         rejected: queue.filter(i => i.status === 'rejected').length,
@@ -128,6 +132,18 @@ export default function FinanceDashboard() {
             });
             setQueue(prev => prev.map(i => i.id === fundModal.id ? { ...i, status: 'funded' } : i));
             if (selected?.id === fundModal.id) setSelected({ ...fundModal, status: 'funded' });
+            
+            // Set summary for confirmation modal
+            const principal = parseFloat(fundAmount);
+            const total = fundModal.rawAmount;
+            const interest = total * 0.05; // Fixed 5% return
+            setFundingSummary({
+                seller: fundModal.seller,
+                principal: principal,
+                buyerPays: total,
+                profit: interest
+            });
+            
             setFundModal(null);
         } catch (err) {
             console.error('Fund failed:', err);
@@ -141,13 +157,14 @@ export default function FinanceDashboard() {
         const isLoading = actionLoading === inv.id;
         const btnClass = isDetail ? 'btn-detail' : 'btn-ghost-sm';
 
-        if (inv.status === 'pending') {
+        if (inv.status === 'confirmed') {
             return (
                 <div style={{ display: 'flex', gap: isDetail ? '8px' : '4px', flexDirection: isDetail ? 'column' : 'row' }}>
                     <button
                         className={isDetail ? 'btn-detail-approve' : 'btn-approve'}
                         disabled={isLoading}
                         onClick={e => { e.stopPropagation(); handleApprove(inv); }}
+                        style={{ background: 'var(--green)', color: '#fff' }}
                     >
                         {isLoading ? '...' : '✓ Approve'}
                     </button>
@@ -157,6 +174,17 @@ export default function FinanceDashboard() {
                         onClick={e => { e.stopPropagation(); handleReject(inv); }}
                     >
                         {isLoading ? '...' : '✕ Reject'}
+                    </button>
+                </div>
+            );
+        }
+
+        if (inv.status === 'pending' || inv.rawStatus === 'submitted' || inv.rawStatus === 'review') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--gray-400)', fontStyle: 'italic' }}>Awaiting Buyer Confirmation</span>
+                    <button className="btn-reject" disabled={true} style={{ opacity: 0.5, cursor: 'not-allowed', fontSize: '10px' }}>
+                        Approval Locked
                     </button>
                 </div>
             );
@@ -252,7 +280,8 @@ export default function FinanceDashboard() {
                                 <thead>
                                     <tr>
                                         <th>Invoice ID</th>
-                                        <th>Company</th>
+                                        <th>Seller</th>
+                                        <th>Buyer</th>
                                         <th>Amount</th>
                                         <th>Days</th>
                                         <th>Risk Score</th>
@@ -262,17 +291,18 @@ export default function FinanceDashboard() {
                                 </thead>
                                 <tbody>
                                     {loading ? (
-                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
+                                        <tr><td colSpan="8" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
                                     ) : filtered.length === 0 ? (
-                                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
+                                        <tr><td colSpan="8" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
                                     ) : filtered.map(inv => (
                                         <tr key={inv.id} onClick={() => setSelected(inv)} style={{ cursor: 'pointer', background: selected?.id === inv.id ? 'rgba(59,130,246,.08)' : '' }}>
                                             <td className="td-id">{inv.id}</td>
-                                            <td>{inv.company}</td>
+                                            <td style={{ fontWeight: 600 }}>{inv.seller}</td>
+                                            <td style={{ color: '#94A3B8' }}>{inv.buyer}</td>
                                             <td className="td-amount">{inv.amount}</td>
                                             <td>{inv.days}d</td>
                                             <td><span className={`badge risk-${getScoreColor(inv.score) === 'green' ? 'low' : getScoreColor(inv.score) === 'amber' ? 'medium' : 'high'}`}>{inv.score}</span></td>
-                                            <td><span className={`badge ${inv.status === 'approved' ? 'status-approved' : inv.status === 'rejected' ? 'status-rejected' : inv.status === 'funded' ? 'status-approved' : 'status-review'}`}>{inv.status}</span></td>
+                                            <td><span className={`badge ${inv.status === 'confirmed' ? 'status-approved' : inv.status === 'approved' ? 'status-approved' : inv.status === 'rejected' ? 'status-rejected' : inv.status === 'funded' ? 'status-approved' : 'status-review'}`}>{inv.status === 'confirmed' ? 'confirmed' : inv.status}</span></td>
                                             <td>{getActionButtons(inv)}</td>
                                         </tr>
                                     ))}
@@ -288,8 +318,8 @@ export default function FinanceDashboard() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                             <div>
                                 <h3 style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', fontWeight: 700, color: 'var(--blue)' }}>{selected.id}</h3>
-                                <p style={{ color: 'var(--gray-300)', fontSize: '14px', marginTop: '4px' }}>{selected.company}</p>
-                                <p style={{ color: 'var(--gray-400)', fontSize: '12px', marginTop: '2px' }}>Uploaded by {selected.uploaderName}</p>
+                                <p style={{ color: 'var(--white)', fontSize: '15px', fontWeight: 600, marginTop: '4px' }}>Seller: {selected.seller}</p>
+                                <p style={{ color: 'var(--gray-300)', fontSize: '14px', marginTop: '2px' }}>Buyer: {selected.buyer}</p>
                             </div>
                             <button onClick={() => setSelected(null)} style={{
                                 background: 'rgba(255,255,255,.04)', border: '1px solid var(--border-dim)',
@@ -324,7 +354,7 @@ export default function FinanceDashboard() {
                                 <h4 style={{ color: 'var(--gray-300)', fontSize: '13px', fontWeight: 600, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '.5px' }}>AI Breakdown</h4>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     {[
-                                        { label: 'Debtor Credit', value: selected.debtor },
+                                        { label: 'Buyer Credit', value: selected.debtor },
                                         { label: 'Payment History', value: selected.payment },
                                         { label: 'Invoice Validity', value: selected.validity },
                                         { label: 'Industry Risk', value: selected.industry },
@@ -358,46 +388,74 @@ export default function FinanceDashboard() {
                             <div style={{ background: 'rgba(59,130,246,.06)', border: '1px solid rgba(59,130,246,.15)', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
                                 <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Total Invested</div>
                                 <div className="mono" style={{ color: 'var(--blue)', fontSize: '22px', fontWeight: 700 }}>
-                                    ₹{queue.filter(i => i.status === 'funded').reduce((a, b) => a + Math.round(b.rawAmount), 0).toLocaleString('en-IN')}
+                                    ₹{queue.filter(i => i.status === 'funded' || i.status === 'paid' || i.status === 'closed').reduce((a, b) => a + Math.round(b.rawAmount), 0).toLocaleString('en-IN')}
                                 </div>
                             </div>
                             <div style={{ background: 'rgba(34,197,94,.06)', border: '1px solid rgba(34,197,94,.15)', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
-                                <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Expected Returns</div>
+                                <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Realized Profit</div>
                                 <div className="mono" style={{ color: 'var(--green)', fontSize: '22px', fontWeight: 700 }}>
-                                    ₹{queue.filter(i => i.status === 'funded').reduce((a, b) => a + Math.round(b.rawAmount * 0.05), 0).toLocaleString('en-IN')}
+                                    ₹{queue.filter(i => i.status === 'paid' || i.status === 'closed').reduce((a, b) => a + Math.round(b.rawAmount * 0.05), 0).toLocaleString('en-IN')}
                                 </div>
+                                <div style={{ fontSize: '10px', color: 'var(--gray-400)', marginTop: '4px' }}>Proof of Cash Received</div>
                             </div>
                             <div style={{ background: 'rgba(245,158,11,.06)', border: '1px solid rgba(245,158,11,.15)', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
                                 <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Active Investments</div>
                                 <div className="mono" style={{ color: 'var(--amber)', fontSize: '22px', fontWeight: 700 }}>{queue.filter(i => i.status === 'funded').length}</div>
                             </div>
                             <div style={{ background: 'rgba(139,92,246,.06)', border: '1px solid rgba(139,92,246,.15)', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
-                                <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Avg Return Rate</div>
-                                <div className="mono" style={{ color: '#8B5CF6', fontSize: '22px', fontWeight: 700 }}>5.0%</div>
+                                <div style={{ color: 'var(--gray-400)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '8px' }}>Expected Returns</div>
+                                <div className="mono" style={{ color: '#8B5CF6', fontSize: '22px', fontWeight: 700 }}>
+                                    ₹{queue.filter(i => i.status === 'funded').reduce((a, b) => a + Math.round(b.rawAmount * 0.05), 0).toLocaleString('en-IN')}
+                                </div>
                             </div>
                         </div>
 
                         {/* Funded invoices list */}
-                        <h4 style={{ color: 'var(--gray-300)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '.5px' }}>Funded Invoices</h4>
-                        {queue.filter(i => i.status === 'funded').length === 0 ? (
-                            <p style={{ color: 'var(--gray-400)', fontSize: '13px', padding: '20px 0', textAlign: 'center' }}>No funded invoices yet. Approve and fund invoices from the queue above.</p>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '10px' }}>
-                                {queue.filter(i => i.status === 'funded').map(inv => (
-                                    <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'rgba(255,255,255,.02)', border: '1px solid var(--border-dim)', borderRadius: '10px' }}>
-                                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                            <span className="mono" style={{ color: 'var(--blue)', fontSize: '13px', fontWeight: 600 }}>{inv.id}</span>
-                                            <span style={{ color: 'var(--gray-300)', fontSize: '13px' }}>{inv.company}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                                            <span className="mono" style={{ color: 'var(--white)', fontSize: '14px', fontWeight: 600 }}>{inv.amount}</span>
-                                            <span style={{ color: 'var(--green)', fontSize: '12px', fontWeight: 600 }}>+5% return</span>
-                                            <span className="badge status-approved">funded</span>
-                                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px' }}>
+                            <div>
+                                <h4 style={{ color: 'var(--gray-300)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '.5px' }}>Active Funding</h4>
+                                {queue.filter(i => i.status === 'funded').length === 0 ? (
+                                    <p style={{ color: 'var(--gray-400)', fontSize: '13px', padding: '20px 0', textAlign: 'center', background: 'rgba(255,255,255,.01)', borderRadius: '10px' }}>No active investments.</p>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '10px' }}>
+                                        {queue.filter(i => i.status === 'funded').map(inv => (
+                                            <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'rgba(59,130,246,.03)', border: '1px solid rgba(59,130,246,.1)', borderRadius: '10px' }}>
+                                                <div>
+                                                    <div className="mono" style={{ color: 'var(--blue)', fontSize: '11px', fontWeight: 700 }}>{inv.id}</div>
+                                                    <div style={{ color: 'var(--white)', fontSize: '13px', fontWeight: 500 }}>{inv.seller}</div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div className="mono" style={{ color: 'var(--white)', fontSize: '13px', fontWeight: 700 }}>{inv.amount}</div>
+                                                    <div style={{ color: 'var(--amber)', fontSize: '10px' }}>Expected Profit: ₹{Math.round(inv.rawAmount * 0.05).toLocaleString('en-IN')}</div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
                             </div>
-                        )}
+
+                            <div>
+                                <h4 style={{ color: 'var(--gray-300)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '.5px' }}>Settled Returns (Proof of Income)</h4>
+                                {queue.filter(i => i.status === 'paid' || i.status === 'closed').length === 0 ? (
+                                    <p style={{ color: 'var(--gray-400)', fontSize: '13px', padding: '20px 0', textAlign: 'center', background: 'rgba(255,255,255,.01)', borderRadius: '10px' }}>No repayments received yet.</p>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '10px' }}>
+                                        {queue.filter(i => i.status === 'paid' || i.status === 'closed').map(inv => (
+                                            <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'rgba(34,197,94,.03)', border: '1px solid rgba(34,197,94,.1)', borderRadius: '10px' }}>
+                                                <div>
+                                                    <div className="mono" style={{ color: 'var(--blue)', fontSize: '11px', fontWeight: 700 }}>{inv.id}</div>
+                                                    <div style={{ color: 'var(--white)', fontSize: '13px', fontWeight: 500 }}>{inv.buyer} (Paid)</div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ color: 'var(--green)', fontSize: '13px', fontWeight: 700 }}>+₹{Math.round(inv.rawAmount * 0.05).toLocaleString('en-IN')}</div>
+                                                    <div style={{ color: 'var(--gray-400)', fontSize: '10px' }}>Repayment Verified ✅</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -474,7 +532,7 @@ export default function FinanceDashboard() {
                             💰 Fund Invoice
                         </h2>
                         <p style={{ color: 'var(--gray-400)', fontSize: '13px', marginBottom: '24px' }}>
-                            {fundModal.id} — {fundModal.company}
+                            {fundModal.id} — {fundModal.seller}
                         </p>
 
                         <div style={{ marginBottom: '16px' }}>
@@ -549,6 +607,55 @@ export default function FinanceDashboard() {
                                 Cancel
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Funding Summary Modal */}
+            {fundingSummary && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+                }}>
+                    <div style={{
+                        background: 'var(--bg-card)', border: '1px solid var(--green)',
+                        borderRadius: '20px', padding: '40px', width: '480px', maxWidth: '90vw',
+                        textAlign: 'center', boxShadow: '0 0 40px rgba(34,197,94,.2)'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>💰</div>
+                        <h2 style={{ color: 'var(--white)', fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>
+                            Funding Transferred Successfully
+                        </h2>
+                        
+                        <div style={{ background: 'rgba(255,255,255,.03)', borderRadius: '12px', padding: '24px', marginBottom: '24px', textAlign: 'left' }}>
+                            <div style={{ marginBottom: '12px', color: 'var(--gray-300)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Seller Receives (Early):</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>₹{fundingSummary.principal.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style={{ marginBottom: '12px', color: 'var(--gray-400)', fontSize: '13px', fontStyle: 'italic' }}>
+                                ⮕ {fundingSummary.seller} gets working capital now.
+                            </div>
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-dim)', margin: '16px 0' }} />
+                            <div style={{ marginBottom: '12px', color: 'var(--gray-300)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Buyer Pays (at Due Date):</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>₹{fundingSummary.buyerPays.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style={{ color: 'var(--green)', display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '18px', marginTop: '16px' }}>
+                                <span>Your Expected Profit:</span>
+                                <span>+₹{fundingSummary.profit.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setFundingSummary(null)}
+                            style={{
+                                width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                                background: 'var(--green)', color: '#fff', fontSize: '16px',
+                                fontWeight: 700, cursor: 'pointer'
+                            }}
+                        >
+                            Got it!
+                        </button>
                     </div>
                 </div>
             )}

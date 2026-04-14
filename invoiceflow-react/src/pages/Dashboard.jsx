@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { invoiceAPI } from '../services/api';
+import { invoiceAPI, factoringAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
+import Timeline from '../components/Timeline';
 import '../styles/dashboard.css';
 
 export default function Dashboard() {
@@ -12,6 +13,9 @@ export default function Dashboard() {
     const [glowInvoiceId, setGlowInvoiceId] = useState(null);
     const [notifOpen, setNotifOpen] = useState(false);
     const [notifCleared, setNotifCleared] = useState(false);
+    const [dashboardTab, setDashboardTab] = useState('owed'); // 'owed' or 'bills'
+    const [expandedInvoiceId, setExpandedInvoiceId] = useState(null);
+    const [paymentSummary, setPaymentSummary] = useState(null);
     const [dateStr, setDateStr] = useState('');
     const [invoices, setInvoices] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
@@ -233,12 +237,12 @@ export default function Dashboard() {
     };
 
     const getStatusClass = (status) => {
-        const map = { draft: 'status-review', submitted: 'status-review', review: 'status-review', approved: 'status-approved', funded: 'status-funded', rejected: 'status-rejected' };
+        const map = { draft: 'status-review', submitted: 'status-review', review: 'status-review', confirmed: 'status-approved', approved: 'status-approved', funded: 'status-funded', paid: 'status-paid', closed: 'status-closed', rejected: 'status-rejected' };
         return map[status] || 'status-review';
     };
 
     const getStatusLabel = (status) => {
-        const map = { draft: 'Draft', submitted: 'Submitted', review: 'Under Review', approved: 'Approved', funded: 'Funded', rejected: 'Rejected' };
+        const map = { draft: 'Draft', submitted: 'Awaiting Confirmation', review: 'Awaiting Confirmation', confirmed: 'Buyer Confirmed', approved: 'Approved', funded: 'Funded', paid: 'Paid', closed: 'Closed', rejected: 'Rejected' };
         return map[status] || status;
     };
 
@@ -247,6 +251,47 @@ export default function Dashboard() {
     const totalFunded = invoices.filter(i => i.status === 'funded').reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
     const avgRisk = invoices.filter(i => i.riskScore).reduce((sum, i, _, arr) => sum + i.riskScore / arr.length, 0);
     const pendingReview = invoices.filter(i => ['submitted', 'review'].includes(i.status)).length;
+
+    // Filter by tab
+    const userCompany = user?.company || '—NONE—';
+    const owedInvoices = invoices.filter(i => parseInt(i.uploadedBy) === parseInt(user?.id));
+    const billInvoices = invoices.filter(i => i.debtorCompany === userCompany && parseInt(i.uploadedBy) !== parseInt(user?.id));
+    
+    const activeInvoices = dashboardTab === 'owed' ? owedInvoices : billInvoices;
+
+    async function handleConfirm(id) {
+        try {
+            await invoiceAPI.confirm(id);
+            const res = await invoiceAPI.getAll();
+            setInvoices(res.data.invoices || []);
+        } catch (err) {
+            console.error('Confirm failed:', err);
+            alert('Confirm failed: ' + (err.response?.data?.error || err.message));
+        }
+    }
+
+    async function handlePay(id) {
+        try {
+            await factoringAPI.pay(id);
+            const res = await invoiceAPI.getAll();
+            setInvoices(res.data.invoices || []);
+        } catch (err) {
+            console.error('Pay failed:', err);
+            alert('Pay failed: ' + (err.response?.data?.error || err.message));
+        }
+    }
+
+    async function handleSettle(id) {
+        try {
+            const resSettle = await factoringAPI.settle(id);
+            setPaymentSummary(resSettle.data.summary);
+            const res = await invoiceAPI.getAll();
+            setInvoices(res.data.invoices || []);
+        } catch (err) {
+            console.error('Settle failed:', err);
+            alert('Settle failed: ' + (err.response?.data?.error || err.message));
+        }
+    }
 
     const filteredInvoices = invoices.filter(inv => {
         const matchesSearch = (inv.debtorCompany || '').toLowerCase().includes(search.toLowerCase()) || (inv.invoiceNumber || '').toLowerCase().includes(search.toLowerCase());
@@ -394,13 +439,28 @@ export default function Dashboard() {
 
                 {/* Invoice Table */}
                 <section id="section-invoices" className="card table-card">
+                    {paymentSummary && (
+                        <div className="payment-summary-overlay">
+                            <div className="payment-summary-card">
+                                <h3>Invoice Closed Successfully</h3>
+                                <p>Seller received <strong>{formatAmount(paymentSummary.principal)}</strong> early.</p>
+                                <p>Buyer paid normally on due date.</p>
+                                <p>Finance Partner earned <strong>{formatAmount(paymentSummary.interest)}</strong> interest.</p>
+                                <p style={{ marginTop: '12px', color: 'var(--green)', fontWeight: 600 }}>Seller profit: {formatAmount(paymentSummary.profit)}</p>
+                                <button className="btn-primary" onClick={() => setPaymentSummary(null)} style={{ marginTop: '20px' }}>Close</button>
+                            </div>
+                        </div>
+                    )}
                     <div className="table-header">
                         <div className="table-header-left">
-                            <h2 className="card-title">Recent Invoices</h2>
+                            <div className="dashboard-main-tabs" style={{ display: 'flex', gap: '20px', marginBottom: '16px' }}>
+                                <button className={`main-tab ${dashboardTab === 'owed' ? 'active' : ''}`} onClick={() => setDashboardTab('owed')}>Money I Am Owed</button>
+                                <button className={`main-tab ${dashboardTab === 'bills' ? 'active' : ''}`} onClick={() => setDashboardTab('bills')}>Bills I Need to Pay</button>
+                            </div>
                             <div className="table-tabs">
-                                {['all', 'Under Review', 'Approved', 'Funded'].map(f => (
+                                {['all', 'submitted', 'confirmed', 'funded', 'paid', 'closed'].map(f => (
                                     <button key={f} className={`tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
-                                        {f === 'all' ? 'All' : f === 'Under Review' ? 'In Review' : f}
+                                        {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
                                     </button>
                                 ))}
                             </div>
@@ -426,12 +486,12 @@ export default function Dashboard() {
                             <tbody>
                                 {loadingData ? (
                                     <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>Loading invoices...</td></tr>
-                                ) : filteredInvoices.length === 0 ? (
-                                    <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748B', padding: '32px' }}>No invoices found</td></tr>
-                                ) : filteredInvoices.map(inv => {
+                                ) : activeInvoices.filter(i => filter === 'all' || i.status === filter).map(inv => {
                                     const isGlowing = glowInvoiceId === inv.id;
+                                    const isExpanded = expandedInvoiceId === inv.id;
                                     return (
-                                    <tr key={inv.id} data-status={inv.status} id={`invoice-row-${inv.id}`}
+                                    <Fragment key={inv.id}>
+                                    <tr data-status={inv.status} id={`invoice-row-${inv.id}`}
                                         style={isGlowing ? {
                                             boxShadow: '0 0 0 2px rgba(59,130,246,.5), 0 0 20px rgba(59,130,246,.15)',
                                             background: 'rgba(59,130,246,.08)',
@@ -439,13 +499,36 @@ export default function Dashboard() {
                                         } : {}}
                                     >
                                         <td className="td-id">{inv.invoiceNumber}</td>
-                                        <td>{inv.debtorCompany}</td>
+                                        <td>{dashboardTab === 'owed' ? inv.debtorCompany : (inv.uploaderCompany || inv.uploaderName)}</td>
                                         <td className="td-amount">{formatAmount(inv.amount)}</td>
                                         <td>{formatDate(inv.dueDate)}</td>
                                         <td><span className={`badge ${getRiskClass(inv.riskLevel)}`}>{inv.riskLevel ? inv.riskLevel.charAt(0).toUpperCase() + inv.riskLevel.slice(1) : '—'}</span></td>
                                         <td><span className={`badge ${getStatusClass(inv.status)}`}>{getStatusLabel(inv.status)}</span></td>
-                                        <td><button className="btn-ghost-sm">View</button></td>
+                                        <td>
+                                            <button className="btn-ghost-sm" onClick={() => setExpandedInvoiceId(isExpanded ? null : inv.id)}>
+                                                {isExpanded ? 'Hide' : 'View'}
+                                            </button>
+                                        </td>
                                     </tr>
+                                    {isExpanded && (
+                                        <tr>
+                                            <td colSpan="7" style={{ background: 'rgba(255,255,255,.02)', padding: '20px' }}>
+                                                <Timeline status={inv.status} />
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                                                    {dashboardTab === 'bills' && (inv.status === 'submitted' || inv.status === 'review') && (
+                                                        <button className="btn-primary btn-sm" onClick={() => handleConfirm(inv.id)}>Confirm Invoice</button>
+                                                    )}
+                                                    {dashboardTab === 'bills' && inv.status === 'funded' && (
+                                                        <button className="btn-primary btn-sm" onClick={() => handlePay(inv.id)}>Pay Now</button>
+                                                    )}
+                                                    {dashboardTab === 'owed' && inv.status === 'paid' && (
+                                                        <button className="btn-primary btn-sm" onClick={() => handleSettle(inv.id)}>Close & Receive Profit</button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </Fragment>
                                 );
                                 })}
                             </tbody>

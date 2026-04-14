@@ -7,6 +7,8 @@ const {
     rejectInvoice,
     fundInvoice,
     getTransactions,
+    payInvoice,
+    settleInvoice,
     completeTransaction
 } = require('../controllers/factoringController');
 
@@ -21,6 +23,12 @@ router.put('/:id/reject', auth, authorize('finance', 'admin'), rejectInvoice);
 
 // POST /api/factoring/:id/fund      — Fund approved invoice (finance)
 router.post('/:id/fund', auth, authorize('finance'), fundInvoice);
+
+// POST /api/factoring/:id/pay       — Buyer pays invoice (company)
+router.post('/:id/pay', auth, authorize('company'), payInvoice);
+
+// POST /api/factoring/:id/settle    — System settles invoice (company/admin)
+router.post('/:id/settle', auth, authorize('company', 'admin'), settleInvoice);
 
 // GET  /api/factoring/transactions  — Get transactions
 router.get('/transactions', auth, getTransactions);

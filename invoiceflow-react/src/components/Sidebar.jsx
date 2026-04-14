@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 
 const navItems = [
     { to: '/dashboard', icon: 'grid', label: 'Dashboard', section: 'dashboard' },
-    { to: '/dashboard', icon: 'invoice', label: 'My Invoices', section: 'invoices' },
+    { to: '/dashboard', icon: 'invoice', label: 'Money I Am Owed', section: 'invoices' },
     { to: '/upload', icon: 'upload', label: 'Upload Invoice', section: 'upload' },
     { to: '/dashboard', icon: 'chart', label: 'Cash Flow', section: 'cashflow' },
 ];
@@ -18,7 +18,7 @@ const financeNavItems = [
 
 const adminNavItems = [
     { to: '/admin', icon: 'users', label: 'Users', section: 'users' },
-    { to: '/admin', icon: 'business', label: 'Business Owners', section: 'business' },
+    { to: '/admin', icon: 'business', label: 'Companies', section: 'company' },
     { to: '/admin', icon: 'finance', label: 'Finance Partners', section: 'finance' },
     { to: '/admin', icon: 'analytics', label: 'Analytics', section: 'analytics' },
     { to: '/admin', icon: 'health', label: 'System Health', section: 'health' },
@@ -102,7 +102,7 @@ const icons = {
     ),
 };
 
-export default function Sidebar({ variant = 'business', activeSection, isOpen, onClose, onSectionClick }) {
+export default function Sidebar({ variant = 'company', activeSection, isOpen, onClose, onSectionClick }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useAuth();
@@ -115,7 +115,7 @@ export default function Sidebar({ variant = 'business', activeSection, isOpen, o
     
     const userName = isAdmin ? (adminNameFromStorage || 'Admin') : (user?.name || localStorage.getItem('invoiceflow_user') || 'User');
     const initials = isAdmin ? (adminAvatarFromStorage || userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)) : userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const userRole = isAdmin ? (adminRoleFromStorage || 'Admin') : (user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Business Owner');
+    const userRole = isAdmin ? (adminRoleFromStorage || 'Admin') : (user?.role === 'finance' ? 'Finance Partner' : user?.role === 'admin' ? 'System Admin' : 'Company / Supplier');
     const userEmail = user?.email || 'user@invoiceflow.in';
     const businessName = user?.company || 'InvoiceFlow Business';
 

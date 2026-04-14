@@ -45,7 +45,7 @@ export default function UploadPage() {
             errors.amount = 'Amount cannot exceed ₹10 Cr';
         }
         if (!formData.debtorCompany.trim()) {
-            errors.debtorCompany = 'Debtor company name is required';
+            errors.debtorCompany = 'Buyer company name is required';
         }
         if (formData.debtorGST.trim() && !validateGSTIN(formData.debtorGST.trim())) {
             errors.debtorGST = 'Invalid GSTIN format (e.g., 27AATCS1286K1ZP)';
@@ -384,7 +384,7 @@ export default function UploadPage() {
                                         <span className="metric-value">{riskDetails.paymentHistory ? `${riskDetails.paymentHistory}` : '—'} <span className="metric-check">{riskDetails.paymentHistory >= 70 ? '✓' : '~'}</span></span>
                                     </div>
                                     <div className={`risk-metric-card ${riskDetails.debtorCredit >= 80 ? 'green' : 'amber'}`}>
-                                        <span className="metric-label">Debtor Credit</span>
+                                        <span className="metric-label">Buyer Credit</span>
                                         <span className="metric-value">{riskDetails.debtorCredit ? `${riskDetails.debtorCredit}` : '—'} <span className="metric-check">{riskDetails.debtorCredit >= 80 ? '✓' : '~'}</span></span>
                                     </div>
                                     <div className={`risk-metric-card ${riskDetails.industryRisk >= 70 ? 'green' : 'amber'}`}>
@@ -443,7 +443,7 @@ export default function UploadPage() {
                                     {[
                                         { label: 'Invoice #', value: createdInvoice.invoiceNumber },
                                         { label: 'Amount', value: `₹${parseFloat(createdInvoice.amount).toLocaleString('en-IN')}` },
-                                        { label: 'Debtor', value: createdInvoice.debtorCompany },
+                                        { label: 'Buyer', value: createdInvoice.debtorCompany },
                                         { label: 'Due Date', value: new Date(createdInvoice.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) },
                                         { label: 'Terms', value: createdInvoice.paymentTerms || 'N/A' },
                                         { label: 'Status', value: createdInvoice.status?.toUpperCase() || 'DRAFT' },
@@ -462,7 +462,7 @@ export default function UploadPage() {
                                         {fieldErrors.amount && <span className="field-error">{fieldErrors.amount}</span>}
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Debtor Company *</label>
+                                        <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px' }}>Buyer Company *</label>
                                         <input type="text" className={`form-input${fieldErrors.debtorCompany ? ' input-error' : ''}`} placeholder="Tata Steel Ltd" value={formData.debtorCompany} onChange={e => updateField('debtorCompany', e.target.value)} style={{ background: '#0F172A', border: fieldErrors.debtorCompany ? '1px solid #EF4444' : '1px solid #1E293B', color: '#E2E8F0', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }} />
                                         {fieldErrors.debtorCompany && <span className="field-error">{fieldErrors.debtorCompany}</span>}
                                     </div>
@@ -514,7 +514,7 @@ export default function UploadPage() {
                             </div>
                             <div className="scoring-factors">
                                 {[
-                                    { name: 'Debtor credit history', pct: '35%', width: '70%' },
+                                    { name: 'Buyer credit history', pct: '35%', width: '70%' },
                                     { name: 'Payment track record', pct: '25%', width: '50%' },
                                     { name: 'Industry risk index', pct: '20%', width: '40%' },
                                     { name: 'Invoice validity', pct: '10%', width: '20%' },

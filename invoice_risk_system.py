@@ -23,7 +23,7 @@ def load_and_preprocess_data(file_path):
         df = pd.read_csv(file_path)
         print("Data loaded successfully.")
     except FileNotFoundError:
-        print(f"⚠️ Error: {file_path} not found. Generating dummy dataset for testing purposes...")
+        print(f" Error: {file_path} not found. Generating dummy dataset for testing purposes...")
         df = generate_dummy_data()
         
     print("\n--- First few rows of the dataset ---")
@@ -154,7 +154,7 @@ def train_and_evaluate(X_train, y_train, X_test, y_test):
             best_model = model
             best_name = name
             
-    print(f"\n🏆 Best Model Selected: {best_name} (Test F1-score: {best_f1:.4f})")
+    print(f"\nBest Model Selected: {best_name} (Test F1-score: {best_f1:.4f})")
     return best_model
 
 def run_training_pipeline(csv_file_path):
@@ -189,7 +189,7 @@ def run_training_pipeline(csv_file_path):
         'label_encoders': label_encoders
     }
     joblib.dump(artifacts, 'invoice_risk_model.pkl')
-    print("\n💾 Model saved successfully to 'invoice_risk_model.pkl'")
+    print("\n Model saved successfully to 'invoice_risk_model.pkl'")
     
     # 7. OUTPUT PREDICTIONS (Sample)
     print("\n--- Output predictions on sample test data ---")

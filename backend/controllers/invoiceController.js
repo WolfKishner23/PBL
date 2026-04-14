@@ -68,14 +68,17 @@ exports.getAllInvoices = async (req, res) => {
         let conditions = [];
         let replacements = {};
 
-        // Business user → get only their invoices
-        if (role === 'business') {
-            conditions.push('i."uploadedBy" = :userId');
+        // Business user → get their uploaded invoices OR invoices where they are the debtor
+        if (role === 'company') {
+            const user = await User.findByPk(userId);
+            const userCompany = user ? user.company : '—NONE—';
+            conditions.push('(i."uploadedBy" = :userId OR i."debtorCompany" = :userCompany)');
             replacements.userId = userId;
+            replacements.userCompany = userCompany;
         }
         // Finance user → get all submitted/review invoices
         else if (role === 'finance') {
-            conditions.push('i."status" IN (\'submitted\', \'review\', \'approved\', \'funded\')');
+            conditions.push('i."status" IN (\'submitted\', \'review\', \'confirmed\', \'approved\', \'funded\', \'paid\', \'closed\')');
         }
         // Admin → get all invoices (no role filter)
 
@@ -136,7 +139,7 @@ exports.getInvoice = async (req, res) => {
         }
 
         // Business can only see their own invoices
-        if (req.user.role === 'business' && invoice.uploadedBy !== req.user.id) {
+        if (req.user.role === 'company' && invoice.uploadedBy !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized to view this invoice' });
         }
 
@@ -213,6 +216,29 @@ exports.deleteInvoice = async (req, res) => {
         res.json({ success: true, message: 'Invoice deleted' });
     } catch (error) {
         console.error('Delete invoice error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── CONFIRM INVOICE (Buyer confirms debt) ───────────────────────────────────
+exports.confirmInvoice = async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id);
+        if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+        const user = await User.findByPk(req.user.id);
+        if (invoice.debtorCompany !== user.company) {
+            return res.status(403).json({ success: false, error: 'Not authorized to confirm this invoice' });
+        }
+
+        if (invoice.status !== 'review' && invoice.status !== 'submitted') {
+            return res.status(400).json({ success: false, error: 'Invoice cannot be confirmed in current status' });
+        }
+
+        await invoice.update({ status: 'confirmed' });
+        res.json({ success: true, invoice });
+    } catch (error) {
+        console.error('Confirm invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
