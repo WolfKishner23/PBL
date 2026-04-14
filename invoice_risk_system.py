@@ -227,11 +227,41 @@ def predict_invoice_risk(new_invoice_data):
     
     # Reproduce Feature Engineering
     if 'actual_payment_date' in df.columns and 'due_date' in df.columns:
-        df['actual_payment_date'] = pd.to_datetime(df['actual_payment_date'])
-        df['due_date'] = pd.to_datetime(df['due_date'])
-        df['payment_delay'] = (df['actual_payment_date'] - df['due_date']).dt.days
+        # 1. Force conversion to datetime, handling empty strings as NaT
+        df['actual_payment_date'] = pd.to_datetime(df['actual_payment_date'], errors='coerce', utc=True)
+        df['due_date'] = pd.to_datetime(df['due_date'], errors='coerce', utc=True)
+        
+        # 2. Force both to TZ-naive (UTC-less) to allow subtraction
+        df['actual_payment_date'] = df['actual_payment_date'].dt.tz_localize(None)
+        df['due_date'] = df['due_date'].dt.tz_localize(None)
+        
+        # 3. Calculate delay, defaulting to 0 if subtraction fails (e.g. NaT)
+        df['payment_delay'] = (df['actual_payment_date'] - df['due_date']).dt.days.fillna(0).astype(int)
     elif 'payment_delay' not in df.columns:
         df['payment_delay'] = 0 # Default assumption
+
+    # ─── Concentration & Blended Credit Logic ─────────────────────────
+    # These are calculated in the backend or passed as features
+    # But we ensure they exist here for the model pipeline
+    if 'internal_payment_score' not in df.columns:
+        df['internal_payment_score'] = 50
+    if 'external_credit_rating' not in df.columns:
+        df['external_credit_rating'] = 50
+    if 'invoice_history_count' not in df.columns:
+        df['invoice_history_count'] = 0
+    if 'concentration_risk_score' not in df.columns:
+        df['concentration_risk_score'] = 90 # Default Low Risk
+
+    # Smart Blending Logic (mirrors train.py)
+    def blend(row):
+        c = row['invoice_history_count']
+        i = row['internal_payment_score']
+        e = row['external_credit_rating']
+        if c <= 1: return e
+        if c <= 4: return (i * 0.4) + (e * 0.6)
+        return (i * 0.8) + (e * 0.2)
+    
+    df['blended_credit_score'] = df.apply(blend, axis=1)
 
     # Handle missing buyer_reliability_score for unseen data
     if 'buyer_reliability_score' not in df.columns:
@@ -266,9 +296,9 @@ def predict_invoice_risk(new_invoice_data):
     return {
         "prediction": risk_mapping[pred],
         "probabilities": {
-            "Low Risk": round(probs[0]*100, 2),
-            "Medium Risk": round(probs[1]*100, 2),
-            "High Risk": round(probs[2]*100, 2)
+            "Low Risk": float(probs[0] * 100),
+            "Medium Risk": float(probs[1] * 100),
+            "High Risk": float(probs[2] * 100)
         },
         "status": "success",
         "message": "Risk evaluation completed."

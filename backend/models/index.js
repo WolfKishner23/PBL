@@ -2,6 +2,9 @@ const User = require('./User');
 const Invoice = require('./Invoice');
 const Transaction = require('./Transaction');
 const Notification = require('./Notification');
+const ConcentrationRisk = require('./ConcentrationRisk');
+const ExternalCreditRating = require('./ExternalCreditRating');
+const CreditApiLog = require('./CreditApiLog');
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -33,4 +36,11 @@ Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Invoice.hasMany(Notification, { foreignKey: 'invoiceId', as: 'notifications' });
 Notification.belongsTo(Invoice, { foreignKey: 'invoiceId', as: 'invoice' });
 
-module.exports = { User, Invoice, Transaction, Notification };
+// User → Concentration Risk
+User.hasMany(ConcentrationRisk, { foreignKey: 'sellerId', as: 'concentrationRisks' });
+ConcentrationRisk.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
+
+module.exports = { 
+    User, Invoice, Transaction, Notification, 
+    ConcentrationRisk, ExternalCreditRating, CreditApiLog 
+};

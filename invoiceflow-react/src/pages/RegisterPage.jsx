@@ -236,7 +236,7 @@ export default function RegisterPage() {
                                         type="email"
                                         className={`form-input${fieldErrors.email ? ' input-error' : ''}`}
                                         id="regEmail"
-                                        placeholder="name@company.com"
+                                        placeholder={role === 'finance' ? "name@finance.com" : "name@company.com"}
                                         required
                                         value={formData.email}
                                         onChange={e => updateFormData('email', e.target.value)}

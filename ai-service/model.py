@@ -38,7 +38,11 @@ def predict_risk(invoice_data: dict) -> dict:
         "amount": float(invoice_data.get('amount', 0)),
         "industry": "other",
         "due_date": invoice_data.get('dueDate', '2030-01-01'),
-        "actual_payment_date": "" # Empty means prediction is needed
+        "actual_payment_date": "",
+        "internal_payment_score": float(invoice_data.get('internalPaymentScore', 50)),
+        "external_credit_rating": float(invoice_data.get('externalCreditRating', 50)),
+        "invoice_history_count": int(invoice_data.get('invoiceHistoryCount', 0)),
+        "concentration_risk_score": float(invoice_data.get('concentrationRiskScore', 90))
     }
     
     # Simple NLP to detect industry from company name or data
@@ -50,9 +54,6 @@ def predict_risk(invoice_data: dict) -> dict:
 
     # 2. Call new ML Model
     if ML_BRIDGE_ACTIVE:
-        # Before calling, we must switch CWD temporarily so the script finds the .pkl in its root folder,
-        # or we just rely on joblib loading properly if we change joblib.load path in the script.
-        # Actually, since invoice_risk_system.py uses "joblib.load('invoice_risk_model.pkl')", it expects CWD to be parent dir.
         old_cwd = os.getcwd()
         os.chdir(PARENT_DIR)
         
@@ -72,7 +73,6 @@ def predict_risk(invoice_data: dict) -> dict:
         prediction_label = "Medium Risk"
         probs = {"Low Risk": 33.3, "Medium Risk": 33.3, "High Risk": 33.3}
 
-    
     # 3. Format response for Node.js Frontend expectations
     level_map = {
         "Low Risk": "low",
@@ -82,9 +82,6 @@ def predict_risk(invoice_data: dict) -> dict:
     risk_level = level_map.get(prediction_label, "medium")
     
     # Calculate a numerical 0-100 score based on probabilities
-    # High risk -> lower score. Low risk -> higher score.
-    # e.g., 100% Low Risk = 95 score. 100% High Risk = 20 score.
-    # Let's derive it gracefully based on confidence spreads:
     score = (probs.get("Low Risk", 0) * 0.95) + \
             (probs.get("Medium Risk", 0) * 0.65) + \
             (probs.get("High Risk", 0) * 0.30)
@@ -122,9 +119,11 @@ def predict_risk(invoice_data: dict) -> dict:
     
     flags = []
     if risk_level == "high":
-        flags.append("[!] AI Algorithm flagged significant risk based on historical data.")
-    if mapped_data['amount'] > 1000000:
-        flags.append("[!] High invoice amount - increased exposure.")
+        flags.append("[!] AI Algorithm flagged significant risk based on multi-factor analysis.")
+    if mapped_data['concentration_risk_score'] <= 60:
+        flags.append("[!] High Concentration Risk: Seller is over-dependent on this buyer.")
+    if mapped_data['external_credit_rating'] < 40:
+        flags.append("[!] Bureau Alert: Low external credit rating detected.")
 
     return {
         'riskScore': risk_score,
@@ -132,10 +131,12 @@ def predict_risk(invoice_data: dict) -> dict:
         'confidence': round(confidence_val, 4),
         'details': {
             'buyerReliability': 90 if risk_level == "low" else (50 if risk_level == "medium" else 20),
-            'paymentHistory': 85 if risk_level == "low" else (60 if risk_level == "medium" else 30),
+            'paymentHistory': mapped_data['internal_payment_score'],
+            'externalCreditRating': mapped_data['external_credit_rating'],
+            'concentrationRisk': mapped_data['concentration_risk_score'],
             'industryRisk': INDUSTRY_RISK.get(mapped_data['industry'], 62),
             'invoiceAmount': mapped_data['amount'],
-            'daysToMaturity': 30, # default placeholder
+            'daysToMaturity': 30,
             'gstVerified': bool(invoice_data.get('debtorGST')),
             'urgencyScore': 0.5,
             'riskIndex': mapped_data['amount'] * 30

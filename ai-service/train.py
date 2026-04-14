@@ -1,5 +1,5 @@
 """
-InvoiceFlow AI Service — Train Risk Scoring Model (Enhanced)
+InvoiceFlow AI Service - Train Risk Scoring Model (Enhanced)
 Pipeline with xgboost and explicitly engineered features.
 """
 
@@ -15,10 +15,10 @@ from sklearn.pipeline import Pipeline
 import joblib
 import os
 
-print("🤖 InvoiceFlow AI — Training Risk Model (Enhanced Pipeline)...")
+print("InvoiceFlow AI -- Training Risk Model (Enhanced Pipeline)...")
 print("=" * 60)
 
-# ─── Generate Realistic Synthetic Training Data (2000 samples)
+# --- Generate Realistic Synthetic Training Data (2000 samples)
 np.random.seed(42)
 n_samples = 2000
 
@@ -30,12 +30,25 @@ buyer_reliability = np.concatenate([
 ])[:n_samples]
 buyer_reliability = np.clip(buyer_reliability, 10, 100)
 
-payment_history_score = np.concatenate([
+internal_payment_score = np.concatenate([
     np.random.normal(88, 7, int(n_samples * 0.45)),
     np.random.normal(65, 10, int(n_samples * 0.35)),
     np.random.normal(35, 12, int(n_samples * 0.20)),
 ])[:n_samples]
-payment_history_score = np.clip(payment_history_score, 10, 100)
+internal_payment_score = np.clip(internal_payment_score, 10, 100)
+
+external_credit_rating = np.random.normal(70, 15, n_samples)
+external_credit_rating = np.clip(external_credit_rating, 0, 100)
+
+invoice_history_count = np.random.randint(0, 15, n_samples)
+
+# Concentration Risk: % of seller volume going to this buyer
+concentration_pct = np.random.uniform(10, 95, n_samples)
+def get_conc_score(pct):
+    if pct >= 80: return 30
+    if pct >= 60: return 60
+    return 90
+concentration_risk_score = np.array([get_conc_score(p) for p in concentration_pct])
 
 industry_risk_score = np.random.choice(
     [85, 80, 75, 70, 65, 60, 90],
@@ -50,9 +63,8 @@ invoice_amount = np.concatenate([
     np.random.uniform(2000000, 10000000, int(n_samples * 0.10)), 
 ])[:n_samples]
 
-days_to_due = np.random.randint(1, 121, n_samples)  # 1-120 days
+days_to_due = np.random.randint(1, 121, n_samples)
 past_delay_count = np.random.randint(0, 15, n_samples)
-
 gst_provided = np.random.choice([1, 0], size=n_samples, p=[0.75, 0.25])
 
 avg_payment_delay = np.concatenate([
@@ -63,7 +75,10 @@ avg_payment_delay = np.concatenate([
 
 data = {
     'buyer_reliability': buyer_reliability,
-    'payment_history_score': payment_history_score,
+    'internal_payment_score': internal_payment_score,
+    'external_credit_rating': external_credit_rating,
+    'invoice_history_count': invoice_history_count,
+    'concentration_risk_score': concentration_risk_score,
     'industry_risk_score': industry_risk_score,
     'invoice_amount': invoice_amount,
     'days_to_due': days_to_due,
@@ -78,18 +93,31 @@ df = pd.DataFrame(data)
 df['urgency_score'] = 1.0 / np.maximum(df['days_to_due'], 1)
 df['risk_index'] = df['invoice_amount'] * df['days_to_due']
 
+# Smart Blending Logic for Credit Score
+def blend_credit_score(row):
+    count = row['invoice_history_count']
+    internal = row['internal_payment_score']
+    external = row['external_credit_rating']
+    if count <= 1: return external
+    if count <= 4: return (internal * 0.4) + (external * 0.6)
+    return (internal * 0.8) + (external * 0.2)
+
+df['blended_credit_score'] = df.apply(blend_credit_score, axis=1)
+
 # Step 4: Target Variable Creation
 def calculate_label(row):
     amount_score = max(0, min(100, 100 - (row['invoice_amount'] / 100000) * 5))
     delay_penalty = max(0, 100 - row['avg_payment_delay'] * 2)
     delay_count_penalty = min(row['past_delay_count'] * 3, 30)
     
+    # Updated Weights per Feature Request
     weighted_score = (
-        row['buyer_reliability'] * 0.35 +
-        row['payment_history_score'] * 0.25 +
-        row['industry_risk_score'] * 0.15 +
-        amount_score * 0.10 +
-        delay_penalty * 0.15
+        row['buyer_reliability'] * 0.32 +
+        row['blended_credit_score'] * 0.23 +
+        row['industry_risk_score'] * 0.14 +
+        delay_penalty * 0.14 +
+        amount_score * 0.09 +
+        row['concentration_risk_score'] * 0.08
     )
     
     weighted_score -= delay_count_penalty
@@ -109,16 +137,17 @@ df['risk_level'] = df.apply(calculate_label, axis=1)
 df.fillna(df.mean(), inplace=True)
 df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
-print(f"📊 Dataset: {n_samples} samples generated")
+print(f"Dataset: {n_samples} samples generated")
 print(f"   Low risk (0):    {(df['risk_level'] == 0).sum()} ({(df['risk_level'] == 0).mean()*100:.1f}%)")
 print(f"   Medium risk (1): {(df['risk_level'] == 1).sum()} ({(df['risk_level'] == 1).mean()*100:.1f}%)")
 print(f"   High risk (2):   {(df['risk_level'] == 2).sum()} ({(df['risk_level'] == 2).mean()*100:.1f}%)")
 print()
 
 feature_cols = [
-    'buyer_reliability', 'payment_history_score', 'industry_risk_score',
+    'buyer_reliability', 'blended_credit_score', 'industry_risk_score',
     'invoice_amount', 'days_to_due', 'past_delay_count',
-    'gst_provided', 'avg_payment_delay', 'urgency_score', 'risk_index'
+    'gst_provided', 'avg_payment_delay', 'urgency_score', 'risk_index',
+    'concentration_risk_score'
 ]
 
 X = df[feature_cols]
@@ -127,10 +156,10 @@ y = df['risk_level']
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
-print(f"📋 Train: {len(X_train)} | Test: {len(X_test)}")
+print(f"Train: {len(X_train)} | Test: {len(X_test)}")
 
 # Step 6 & 7: Model Training and Evaluation
-print("\n🔬 Comparing Models...")
+print("\nComparing Models...")
 print("-" * 40)
 
 models = {
@@ -166,14 +195,14 @@ for name, model in models.items():
         best_model = model
         best_name = name
 
-print(f"\n🏆 Best Model: {best_name} (F1: {best_score:.4f})")
+print(f"\nBest Model: {best_name} (F1: {best_score:.4f})")
 
 # Final evaluation printed
 y_pred = best_model.predict(X_test)
-print("\n📊 Classification Report:")
+print("\nClassification Report:")
 print(classification_report(y_test, y_pred, target_names=['Low Risk', 'Medium Risk', 'High Risk']))
 
-print("🔢 Confusion Matrix:")
+print("Confusion Matrix:")
 cm = confusion_matrix(y_test, y_pred)
 print(f"   Predicted:  Low  Med  High")
 for i, row in enumerate(['Low ', 'Med ', 'High']):
@@ -186,9 +215,9 @@ if isinstance(best_model, Pipeline):
 
 if hasattr(model_for_imp, 'feature_importances_'):
     importances = model_for_imp.feature_importances_
-    print("\n📈 Feature Importance:")
+    print("\nFeature Importance:")
     for name, imp in sorted(zip(feature_cols, importances), key=lambda x: x[1], reverse=True):
-        bar = "█" * int(imp * 50)
+        bar = "#" * int(imp * 50)
         print(f"   {name:<25} {imp:.4f} {bar}")
 
 # Save the model
@@ -196,6 +225,6 @@ model_path = os.path.join(os.path.dirname(__file__), 'risk_model.pkl')
 joblib.dump(best_model, model_path)
 joblib.dump(feature_cols, os.path.join(os.path.dirname(__file__), 'feature_cols.pkl'))
 
-print(f"\n💾 Model saved: {model_path}")
+print(f"\nModel saved: {model_path}")
 print("=" * 60)
-print("✅ Pipeline complete!")
+print("Pipeline complete!")

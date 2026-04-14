@@ -116,9 +116,8 @@ export default function FinanceDashboard() {
     const stats = {
         queueSize: queue.filter(i => i.status === 'pending' || i.status === 'confirmed').length,
         approved: queue.filter(i => i.status === 'approved').length,
-        funded: queue.filter(i => i.status === 'funded').length,
+        funded: queue.filter(i => ['funded', 'paid', 'closed', 'settled'].includes(i.status)).length,
         rejected: queue.filter(i => i.status === 'rejected').length,
-        avgScore: queue.length ? Math.round(queue.reduce((a, b) => a + b.score, 0) / queue.length) : 0,
     };
 
     async function handleApprove(inv) {
@@ -361,7 +360,6 @@ export default function FinanceDashboard() {
                         { label: 'Approved', value: stats.approved, accent: 'green' },
                         { label: 'Funded', value: stats.funded, accent: 'green' },
                         { label: 'Rejected', value: stats.rejected, accent: 'red' },
-                        { label: 'Avg Score', value: stats.avgScore, accent: 'amber' },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top"><span className="stat-card-label">{s.label}</span></div>

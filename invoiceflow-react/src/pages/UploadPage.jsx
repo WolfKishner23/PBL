@@ -25,7 +25,7 @@ export default function UploadPage() {
         amount: '',
         debtorCompany: '',
         debtorGST: '',
-        dueDate: '',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         paymentTerms: 'Net 30',
         industry: '',
         description: ''
@@ -132,7 +132,7 @@ export default function UploadPage() {
                 amount: parseFloat(formData.amount) || 350000,
                 debtorCompany: formData.debtorCompany || 'Unknown Company',
                 debtorGST: formData.debtorGST,
-                dueDate: formData.dueDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                dueDate: formData.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 paymentTerms: formData.paymentTerms,
                 industry: formData.industry,
                 description: formData.description
