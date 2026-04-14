@@ -263,9 +263,12 @@ export default function Dashboard() {
     const pendingReview = invoices.filter(i => ['submitted', 'review'].includes(i.status)).length;
 
     // Filter by tab
-    const userCompany = user?.company || '—NONE—';
+    const userCompany = (user?.company || '').trim().toLowerCase();
     const owedInvoices = invoices.filter(i => parseInt(i.uploadedBy) === parseInt(user?.id));
-    const billInvoices = invoices.filter(i => i.debtorCompany === userCompany && parseInt(i.uploadedBy) !== parseInt(user?.id));
+    const billInvoices = invoices.filter(i => 
+        (i.debtorCompany || '').trim().toLowerCase() === userCompany && 
+        parseInt(i.uploadedBy) !== parseInt(user?.id)
+    );
     
     const activeInvoices = dashboardTab === 'owed' ? owedInvoices : billInvoices;
 

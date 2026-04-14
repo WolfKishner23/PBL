@@ -4,6 +4,7 @@ const { sequelize } = require('../config/db');
 const axios = require('axios');
 const Invoice = require('../models/Invoice');
 const User = require('../models/User');
+const riskService = require('../services/riskService');
 
 // ─── Generate Unique Invoice Number: INV-[YEAR]-[3 digits] ───────────────────
 const generateInvoiceNumber = () => {
@@ -71,14 +72,14 @@ exports.getAllInvoices = async (req, res) => {
         // Business user → get their uploaded invoices OR invoices where they are the debtor
         if (role === 'company') {
             const user = await User.findByPk(userId);
-            const userCompany = user ? user.company : '—NONE—';
-            conditions.push('(i."uploadedBy" = :userId OR i."debtorCompany" = :userCompany)');
+            const userCompany = user ? user.company.trim() : '—NONE—';
+            conditions.push('(i."uploadedBy" = :userId OR TRIM(i."debtorCompany") ILIKE :userCompany)');
             replacements.userId = userId;
             replacements.userCompany = userCompany;
         }
-        // Finance user → get all submitted/review invoices
+        // Finance user → get all submitted/review/confirmed/approved/funded/paid/closed/settled/rejected invoices
         else if (role === 'finance') {
-            conditions.push('i."status" IN (\'submitted\', \'review\', \'confirmed\', \'approved\', \'funded\', \'paid\', \'closed\')');
+            conditions.push('i."status" IN (\'submitted\', \'review\', \'confirmed\', \'approved\', \'funded\', \'paid\', \'closed\', \'settled\', \'rejected\')');
         }
         // Admin → get all invoices (no role filter)
 
@@ -104,7 +105,7 @@ exports.getAllInvoices = async (req, res) => {
         const invoices = await sequelize.query(
             `SELECT i.*, u.name as "uploaderName", u.company as "uploaderCompany"
              FROM "invoices" i
-             JOIN "users" u ON i."uploadedBy" = u.id
+             LEFT JOIN "users" u ON i."uploadedBy" = u.id
              ${whereClause}
              ORDER BY i."createdAt" DESC`,
             {
@@ -227,7 +228,10 @@ exports.confirmInvoice = async (req, res) => {
         if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
         const user = await User.findByPk(req.user.id);
-        if (invoice.debtorCompany !== user.company) {
+        const buyerCompany = (invoice.debtorCompany || '').trim().toLowerCase();
+        const userCompany = (user.company || '').trim().toLowerCase();
+
+        if (buyerCompany !== userCompany) {
             return res.status(403).json({ success: false, error: 'Not authorized to confirm this invoice' });
         }
 
@@ -269,6 +273,14 @@ exports.submitInvoice = async (req, res) => {
         // Automatically trigger AI risk scoring
         let riskResult = null;
         try {
+            // 1. Calculate Advanced Risk Factors
+            const concentration = await riskService.calculateConcentrationRisk(invoice.uploadedBy, invoice.debtorCompany);
+            const externalRating = await riskService.getExternalCreditRating(invoice.debtorCompany);
+            const internalHistory = await riskService.getInternalPaymentScore(invoice.debtorCompany);
+
+            console.log(`[Integration] Concentration: ${concentration.percentage.toFixed(1)}%, Credit Rating: ${externalRating}`);
+
+            // 2. Call AI Service with expanded data points
             const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
                 invoiceData: {
                     invoiceNumber: invoice.invoiceNumber,
@@ -278,7 +290,12 @@ exports.submitInvoice = async (req, res) => {
                     invoiceDate: invoice.invoiceDate,
                     dueDate: invoice.dueDate,
                     paymentTerms: invoice.paymentTerms,
-                    industry: invoice.industry
+                    industry: invoice.industry,
+                    // New Factors
+                    concentrationRiskScore: concentration.score,
+                    externalCreditRating: externalRating,
+                    internalPaymentScore: internalHistory.score,
+                    invoiceHistoryCount: internalHistory.count
                 }
             });
 
