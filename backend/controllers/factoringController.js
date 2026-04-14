@@ -2,6 +2,8 @@ const Invoice = require('../models/Invoice');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const WalletTransaction = require('../models/WalletTransaction');
+const { sequelize } = require('../config/db');
 const { sendInvoiceStatusEmail } = require('../services/email');
 
 const RISK_RATES = {
@@ -109,45 +111,73 @@ exports.rejectInvoice = async (req, res) => {
 
 // ─── FUND INVOICE ─────────────────────────────────────────────────────────────
 exports.fundInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const { fundedAmount, returnRate } = req.body;
         const invoice = await Invoice.findByPk(req.params.id);
-
         if (!invoice) {
+            await t.rollback();
             return res.status(404).json({ success: false, error: 'Invoice not found' });
         }
 
         if (invoice.status !== 'approved') {
-            return res.status(400).json({
-                success: false,
-                error: 'Only approved invoices can be funded'
-            });
+            await t.rollback();
+            return res.status(400).json({ success: false, error: 'Only approved invoices can be funded' });
         }
 
-        // Determine rate based on risk level
-        const rate = RISK_RATES[invoice.riskLevel] || 5.0;
+        const financier = await User.findByPk(req.user.id);
+        const seller = await User.findByPk(invoice.uploadedBy);
 
-        // Create transaction
-        const transaction = await Transaction.create({
+        // Check Financier Balance
+        const fundAmount = parseFloat(invoice.amount); // 100% advance
+        if (parseFloat(financier.walletBalance) < fundAmount) {
+            await t.rollback();
+            return res.status(400).json({ success: false, error: 'Insufficient wallet balance to fund this invoice' });
+        }
+
+        // 1. Deduct from Financier
+        await financier.update({ walletBalance: parseFloat(financier.walletBalance) - fundAmount }, { transaction: t });
+        await WalletTransaction.create({
+            userId: financier.id,
+            amount: fundAmount,
+            type: 'debit',
+            description: `Funding invoice ${invoice.invoiceNumber}`,
+            referenceId: invoice.id
+        }, { transaction: t });
+
+        // 2. Add to Seller
+        await seller.update({ walletBalance: parseFloat(seller.walletBalance) + fundAmount }, { transaction: t });
+        await WalletTransaction.create({
+            userId: seller.id,
+            amount: fundAmount,
+            type: 'credit',
+            description: `Early payment for invoice ${invoice.invoiceNumber}`,
+            referenceId: invoice.id
+        }, { transaction: t });
+
+        // 3. Update Invoice & Create Transaction
+        const rate = RISK_RATES[invoice.riskLevel] || 5.0;
+        const factoringTransaction = await Transaction.create({
             invoiceId: invoice.id,
             financierId: req.user.id,
             businessId: invoice.uploadedBy,
-            fundedAmount: invoice.amount * 0.85, // Enforce 85% advance
+            fundedAmount: fundAmount,
             returnRate: rate,
             status: 'active'
-        });
+        }, { transaction: t });
 
-        await invoice.update({ status: 'funded' });
+        await invoice.update({ status: 'funded' }, { transaction: t });
+
+        await t.commit();
 
         // Notify business owner
-        const businessUser = await User.findByPk(invoice.uploadedBy);
-        if (businessUser) {
-            sendInvoiceStatusEmail(businessUser, invoice, 'funded')
+        if (seller) {
+            sendInvoiceStatusEmail(seller, invoice, 'funded')
                 .catch(err => console.error('Email error:', err.message));
         }
 
-        res.json({ success: true, transaction, invoice });
+        res.json({ success: true, transaction: factoringTransaction, invoice });
     } catch (error) {
+        if (t) await t.rollback();
         console.error('Fund invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
@@ -198,17 +228,70 @@ exports.getTransactions = async (req, res) => {
 
 // ─── PAY INVOICE (Buyer pays on due date) ─────────────────────────────────────
 exports.payInvoice = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const invoice = await Invoice.findByPk(req.params.id);
-        if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+        if (!invoice) {
+            await t.rollback();
+            return res.status(404).json({ success: false, error: 'Invoice not found' });
+        }
 
         if (invoice.status !== 'funded') {
+            await t.rollback();
             return res.status(400).json({ success: false, error: 'Only funded invoices can be paid' });
         }
 
-        await invoice.update({ status: 'paid' });
-        res.json({ success: true, invoice });
+        // Find Buyer User
+        const buyer = await User.findOne({ where: { company: invoice.debtorCompany } });
+        if (!buyer) {
+            await t.rollback();
+            return res.status(400).json({ success: false, error: 'Buyer is not a registered user on InvoiceFlow. Payment cannot be processed.' });
+        }
+
+        const factoringTransaction = await Transaction.findOne({ where: { invoiceId: invoice.id } });
+        const financier = await User.findByPk(factoringTransaction.financierId);
+
+        // Calculate Interest: Principal × Rate% × (actual days/30)
+        const principal = parseFloat(invoice.amount);
+        const fundedAt = new Date(factoringTransaction.createdAt);
+        const now = new Date();
+        const diffTime = Math.abs(now - fundedAt);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+        const interest = principal * (factoringTransaction.returnRate / 100) * (diffDays / 30);
+        const totalPayment = principal + interest;
+
+        // Check Buyer Balance
+        if (parseFloat(buyer.walletBalance) < totalPayment) {
+            await t.rollback();
+            return res.status(400).json({ success: false, error: 'Insufficient wallet balance. Please add funds to your wallet.' });
+        }
+
+        // 1. Deduct from Buyer
+        await buyer.update({ walletBalance: parseFloat(buyer.walletBalance) - totalPayment }, { transaction: t });
+        await WalletTransaction.create({
+            userId: buyer.id,
+            amount: totalPayment,
+            type: 'debit',
+            description: `Payment for invoice ${invoice.invoiceNumber}`,
+            referenceId: invoice.id
+        }, { transaction: t });
+
+        // 2. Add to Financier
+        await financier.update({ walletBalance: parseFloat(financier.walletBalance) + totalPayment }, { transaction: t });
+        await WalletTransaction.create({
+            userId: financier.id,
+            amount: totalPayment,
+            type: 'credit',
+            description: `Repayment received for invoice ${invoice.invoiceNumber}`,
+            referenceId: invoice.id
+        }, { transaction: t });
+
+        await invoice.update({ status: 'paid' }, { transaction: t });
+        await t.commit();
+
+        res.json({ success: true, invoice, paidAmount: totalPayment, interest });
     } catch (error) {
+        if (t) await t.rollback();
         console.error('Pay invoice error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
@@ -229,29 +312,26 @@ exports.settleInvoice = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Associated transaction not found' });
         }
 
-        // 1. Calculate Interest: Principal × 3% × (days/30)
+        // 1. Calculate Summary for notification (no wallet movement here as it happened in payInvoice)
         const principal = parseFloat(transaction.fundedAmount);
         const amount = parseFloat(invoice.amount);
-        
-        // Calculate days between funding and now
         const fundedAt = new Date(transaction.createdAt);
         const now = new Date();
         const diffTime = Math.abs(now - fundedAt);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // At least 1 day
-        
-        const months = diffDays / 30;
-        const interest = principal * (transaction.returnRate / 100) * months;
-        const profit = amount - principal - interest;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+        const interest = principal * (transaction.returnRate / 100) * (diffDays / 30);
+        const totalPaid = amount + interest;
+        const profit = totalPaid - principal;
 
         // 2. Update Statuses
         await transaction.update({ status: 'completed' });
         await invoice.update({ status: 'settled' });
 
-        // 3. Create Notifications
+        // 3. Create Notifications (Corrected flow messages)
         const messages = {
-            seller: `Invoice ${invoice.invoiceNumber} has been closed. You received ₹${principal.toLocaleString('en-IN')} early, repaid ₹${principal.toLocaleString('en-IN')}, your profit is ₹${profit.toLocaleString('en-IN')}`,
-            buyer: `Invoice ${invoice.invoiceNumber} has been closed. You paid ₹${amount.toLocaleString('en-IN')} on time. Transaction complete.`,
-            finance: `Invoice ${invoice.invoiceNumber} settled. You earned ₹${interest.toLocaleString('en-IN')} profit.`
+            seller: `Invoice ${invoice.invoiceNumber} has been settled. You received ₹${principal.toLocaleString('en-IN')} upfront. Transaction complete.`,
+            buyer: `Invoice ${invoice.invoiceNumber} settled. You paid ₹${totalPaid.toLocaleString('en-IN')} (including interest).`,
+            finance: `Invoice ${invoice.invoiceNumber} settled. You received ₹${totalPaid.toLocaleString('en-IN')} repayment.`
         };
 
         // Seller notification
@@ -289,7 +369,7 @@ exports.settleInvoice = async (req, res) => {
                 principal,
                 interest,
                 profit,
-                totalPaid: amount,
+                totalPaid: totalPaid,
                 daysElapsed: diffDays
             }
         });

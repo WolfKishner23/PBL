@@ -57,6 +57,10 @@ const User = sequelize.define('User', {
     },
     otpExpiry: {
         type: DataTypes.DATE
+    },
+    walletBalance: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0
     }
 }, {
     timestamps: true,

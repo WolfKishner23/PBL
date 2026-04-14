@@ -28,7 +28,7 @@ const connectDB = async () => {
         require('../models/index');
 
         // Sync all models
-        await sequelize.sync({ alter: true });
+        await sequelize.sync();
         console.log('✅ Database models synced');
     } catch (error) {
         console.error('❌ PostgreSQL Connection Error:', error.message);

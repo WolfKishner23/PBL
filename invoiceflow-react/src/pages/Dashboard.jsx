@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { invoiceAPI, factoringAPI, notificationAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Timeline from '../components/Timeline';
+import WalletOverview from '../components/WalletOverview';
 import '../styles/dashboard.css';
 
 export default function Dashboard() {
@@ -289,8 +290,8 @@ export default function Dashboard() {
             const res = await invoiceAPI.getAll();
             setInvoices(res.data.invoices || []);
         } catch (err) {
-            console.error('Pay failed:', err);
-            alert('Pay failed: ' + (err.response?.data?.error || err.message));
+            console.error('Payment failed:', err);
+            alert(err.response?.data?.error || 'Payment failed');
         }
     }
 
@@ -392,6 +393,9 @@ export default function Dashboard() {
                         </Link>
                     </div>
                 </header>
+
+                <div className="dashboard-content">
+                    <WalletOverview />
 
                 {/* Stat Cards */}
                 <section id="section-dashboard" className="stat-cards">
@@ -544,7 +548,8 @@ export default function Dashboard() {
                         </table>
                     </div>
                 </section>
-            </main>
+            </div>
+        </main>
         </>
     );
 }

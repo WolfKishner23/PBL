@@ -105,5 +105,9 @@ export const notificationAPI = {
     clear: () => API.delete('/notifications/clear'),
 };
 
-export default API;
+// ─── Wallet API ───────────────────────────────────────────────────────────────
+export const walletAPI = {
+    getHistory: () => API.get('/wallet')
+};
 
+export default API;

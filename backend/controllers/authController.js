@@ -2,6 +2,7 @@ const { validationResult, body } = require('express-validator');
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 const User = require('../models/User');
+const WalletTransaction = require('../models/WalletTransaction');
 const { generateToken } = require('../utils/helpers');
 const { sendEmail } = require('../services/email');
 
@@ -24,7 +25,7 @@ exports.register = async (req, res) => {
             });
         }
 
-        // Create new user (password hashed via beforeCreate hook with salt 12)
+        // Create new user (password hashed via beforeCreate hook)
         const user = await User.create({
             name,
             email,
@@ -32,7 +33,16 @@ exports.register = async (req, res) => {
             role: role || 'company',
             company,
             gstNumber,
-            industry
+            industry,
+            walletBalance: role === 'finance' ? 2000000 : 200000
+        });
+
+        // Record initial balance transaction
+        await WalletTransaction.create({
+            userId: user.id,
+            amount: role === 'finance' ? 2000000 : 200000,
+            type: 'credit',
+            description: 'Initial simulation balance'
         });
 
         // ─── Raw SQL Query to demonstrate SQL knowledge ───────────────────────

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { adminAPI } from '../services/api';
+import WalletOverview from '../components/WalletOverview';
 import '../styles/dashboard.css';
 import '../styles/admin.css';
 
@@ -165,6 +166,8 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </header>
+
+                <WalletOverview />
 
                 {/* Stat Cards */}
                 <section className="stat-cards">

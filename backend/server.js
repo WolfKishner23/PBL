@@ -40,6 +40,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/factoring', require('./routes/factoring'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/feedback', require('./routes/feedback'));
