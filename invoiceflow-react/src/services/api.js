@@ -98,5 +98,12 @@ export const aiAPI = {
     }),
 };
 
+// ─── Notification API ──────────────────────────────────────────────────────────
+export const notificationAPI = {
+    getAll: () => API.get('/notifications'),
+    markAsRead: (id) => API.put(`/notifications/${id}/read`),
+    clear: () => API.delete('/notifications/clear'),
+};
+
 export default API;
 

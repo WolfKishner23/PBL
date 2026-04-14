@@ -1,6 +1,6 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
 import Sidebar from '../components/Sidebar';
-import { invoiceAPI, factoringAPI } from '../services/api';
+import { invoiceAPI, factoringAPI, notificationAPI } from '../services/api';
 import '../styles/dashboard.css';
 import '../styles/finance.css';
 
@@ -9,6 +9,14 @@ function getScoreColor(score) {
     if (score >= 50) return 'amber';
     return 'red';
 }
+
+const RISK_RATES = { low: 2, medium: 4, high: 6 };
+const getRateForRisk = (score) => {
+    const color = getScoreColor(score);
+    if (color === 'green') return { label: 'LOW', rate: 2 };
+    if (color === 'amber') return { label: 'MEDIUM', rate: 4 };
+    return { label: 'HIGH', rate: 6 };
+};
 
 export default function FinanceDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,6 +32,22 @@ export default function FinanceDashboard() {
     const [activeSection, setActiveSection] = useState('finance');
     const [glowSection, setGlowSection] = useState(null);
     const [fundingSummary, setFundingSummary] = useState(null);
+    const [settleSummary, setSettleSummary] = useState(null);
+    const [notifications, setNotifications] = useState([]);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [notifCleared, setNotifCleared] = useState(false);
+    const notifRef = useRef(null);
+
+    // Close notifications when clicking outside
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setNotifOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Handle sidebar section click — scroll + glow
     function handleSectionClick(section) {
@@ -36,10 +60,20 @@ export default function FinanceDashboard() {
         }
     }
 
-    // Fetch invoices from API
+    // Fetch data from API
     useEffect(() => {
         fetchInvoices();
+        fetchNotifications();
     }, []);
+
+    async function fetchNotifications() {
+        try {
+            const res = await notificationAPI.getAll();
+            setNotifications(res.data.notifications || []);
+        } catch (err) {
+            console.error('Failed to fetch notifications:', err);
+        }
+    }
 
     async function fetchInvoices() {
         try {
@@ -70,7 +104,7 @@ export default function FinanceDashboard() {
     }
 
     const filtered = queue.filter(inv => {
-        const matchTab = tab === 'all' || inv.status === tab;
+        const matchTab = tab === 'all' || inv.status === tab || (tab === 'funded' && inv.status === 'paid') || (tab === 'funded' && inv.status === 'settled');
         const matchSearch = 
             (inv.seller && inv.seller.toLowerCase().includes(search.toLowerCase())) || 
             (inv.buyer && inv.buyer.toLowerCase().includes(search.toLowerCase())) || 
@@ -119,7 +153,6 @@ export default function FinanceDashboard() {
     function openFundModal(inv) {
         setFundModal(inv);
         setFundAmount(Math.round(inv.rawAmount * 0.85).toString());
-        setFundRate('5.0');
     }
 
     async function handleFund() {
@@ -127,27 +160,44 @@ export default function FinanceDashboard() {
         setActionLoading(fundModal.id);
         try {
             await factoringAPI.fund(fundModal.dbId, {
-                fundedAmount: parseFloat(fundAmount),
-                returnRate: parseFloat(fundRate)
+                fundedAmount: parseFloat(fundAmount)
             });
+            const rData = getRateForRisk(fundModal.score);
+            const principal = parseFloat(fundAmount);
+            const diffDays = Math.ceil((new Date(fundModal.due) - new Date()) / (1000 * 60 * 60 * 24)) || 1;
+            const interest = principal * (rData.rate / 100) * (diffDays / 30);
+
+            setFundingSummary({
+                principal,
+                seller: fundModal.seller,
+                buyerPays: parseFloat(fundModal.rawAmount),
+                profit: parseFloat(fundModal.rawAmount) - principal - interest,
+                interest
+            });
+
             setQueue(prev => prev.map(i => i.id === fundModal.id ? { ...i, status: 'funded' } : i));
             if (selected?.id === fundModal.id) setSelected({ ...fundModal, status: 'funded' });
-            
-            // Set summary for confirmation modal
-            const principal = parseFloat(fundAmount);
-            const total = fundModal.rawAmount;
-            const interest = total * 0.05; // Fixed 5% return
-            setFundingSummary({
-                seller: fundModal.seller,
-                principal: principal,
-                buyerPays: total,
-                profit: interest
-            });
             
             setFundModal(null);
         } catch (err) {
             console.error('Fund failed:', err);
             alert('Failed to fund: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setActionLoading(null);
+        }
+    }
+
+    async function handleSettle(inv) {
+        setActionLoading(inv.id);
+        try {
+            const res = await factoringAPI.settle(inv.dbId);
+            setSettleSummary(res.data.summary);
+            setQueue(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'settled', rawStatus: 'settled' } : i));
+            if (selected?.id === inv.id) setSelected({ ...selected, status: 'settled', rawStatus: 'settled' });
+            fetchNotifications();
+        } catch (err) {
+            console.error('Settle failed:', err);
+            alert('Failed to settle: ' + (err.response?.data?.error || err.message));
         } finally {
             setActionLoading(null);
         }
@@ -210,12 +260,28 @@ export default function FinanceDashboard() {
             );
         }
 
-        if (inv.status === 'funded') {
-            return <span className="badge status-funded" style={{
-                background: 'rgba(34,197,94,.1)', color: 'var(--green)',
-                border: '1px solid rgba(34,197,94,.2)', padding: '4px 10px',
-                borderRadius: '6px', fontSize: '11px', fontWeight: 600
-            }}>✓ Funded</span>;
+        if (inv.status === 'funded' || inv.rawStatus === 'funded' || inv.rawStatus === 'pdf_processed') {
+            return <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="badge status-funded">✓ Funded</span>
+                <span style={{ fontSize: '10px', color: 'var(--gray-400)' }}>Awaiting Repayment</span>
+            </div>;
+        }
+
+        if (inv.rawStatus === 'paid') {
+            return (
+                <button
+                    className={isDetail ? 'btn-detail-approve' : 'btn-fund'}
+                    disabled={isLoading}
+                    onClick={e => { e.stopPropagation(); handleSettle(inv); }}
+                    style={{ background: 'var(--green)', color: '#fff' }}
+                >
+                    {isLoading ? '...' : '🤝 Close Invoice'}
+                </button>
+            );
+        }
+
+        if (inv.status === 'settled' || inv.rawStatus === 'settled') {
+            return <span className="badge status-approved" style={{ background: 'rgba(34,197,94,.1)', color: 'var(--green)' }}>✓ Settled</span>;
         }
 
         if (inv.status === 'rejected') {
@@ -237,6 +303,53 @@ export default function FinanceDashboard() {
                         <div>
                             <h1 className="header-greeting">Finance Dashboard</h1>
                             <p className="header-date">Invoice Queue & Portfolio</p>
+                        </div>
+                    </div>
+                    <div className="header-right">
+                        <div className="search-box">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                            <input type="text" placeholder="Search queue…" value={search} onChange={e => { setSearch(e.target.value); setTab('all'); }} />
+                        </div>
+                        <div style={{ position: 'relative' }} ref={notifRef}>
+                            <button className="icon-btn notification-btn" onClick={(e) => { e.stopPropagation(); setNotifOpen(!notifOpen); }} aria-label="Notifications">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z" stroke="currentColor" strokeWidth="1.5" /><path d="M8 15a2 2 0 004 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                                {notifications.length > 0 && !notifCleared && <span className="notification-dot"></span>}
+                            </button>
+                            {notifOpen && (
+                                <div className="notif-dropdown open">
+                                    <div className="notif-header">
+                                        <span className="notif-title">Notifications</span>
+                                        <button className="notif-clear" onClick={async () => {
+                                            await notificationAPI.clear();
+                                            setNotifications([]);
+                                            setNotifCleared(true);
+                                        }}>Clear all</button>
+                                    </div>
+                                    {notifications.length > 0 && !notifCleared ? (
+                                        <ul className="notif-list">
+                                            {notifications.map((n, i) => (
+                                                <li className="notif-item" key={i} onClick={async () => {
+                                                    if (!n.isRead) {
+                                                        await notificationAPI.markAsRead(n.id);
+                                                        setNotifications(notifications.map(no => no.id === n.id ? { ...no, isRead: true } : no));
+                                                    }
+                                                }} style={{ opacity: n.isRead ? 0.6 : 1 }}>
+                                                    <span className="notif-icon">{n.type === 'success' ? '✅' : '🔔'}</span>
+                                                    <div className="notif-body">
+                                                        <span className="notif-msg">{n.message}</span>
+                                                        <span className="notif-time">{new Date(n.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="notif-empty" style={{ display: 'block' }}>
+                                            <span>🔔</span>
+                                            <p>No new notifications</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -264,7 +377,7 @@ export default function FinanceDashboard() {
                             <div className="table-header-left">
                                 <h2 className="card-title">Invoice Queue</h2>
                                 <div className="table-tabs">
-                                    {['all', 'pending', 'approved', 'funded', 'rejected'].map(t => (
+                                    {['all', 'pending', 'approved', 'funded', 'settled', 'rejected'].map(t => (
                                         <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
                                             {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
                                         </button>
@@ -302,7 +415,7 @@ export default function FinanceDashboard() {
                                             <td className="td-amount">{inv.amount}</td>
                                             <td>{inv.days}d</td>
                                             <td><span className={`badge risk-${getScoreColor(inv.score) === 'green' ? 'low' : getScoreColor(inv.score) === 'amber' ? 'medium' : 'high'}`}>{inv.score}</span></td>
-                                            <td><span className={`badge ${inv.status === 'confirmed' ? 'status-approved' : inv.status === 'approved' ? 'status-approved' : inv.status === 'rejected' ? 'status-rejected' : inv.status === 'funded' ? 'status-approved' : 'status-review'}`}>{inv.status === 'confirmed' ? 'confirmed' : inv.status}</span></td>
+                                            <td><span className={`badge ${['approved', 'confirmed', 'funded', 'paid', 'settled'].includes(inv.status) ? 'status-approved' : inv.status === 'rejected' ? 'status-rejected' : 'status-review'}`}>{inv.status === 'confirmed' ? 'confirmed' : inv.status}</span></td>
                                             <td>{getActionButtons(inv)}</td>
                                         </tr>
                                     ))}
@@ -564,22 +677,30 @@ export default function FinanceDashboard() {
                             </span>
                         </div>
 
-                        <div style={{ marginBottom: '24px' }}>
-                            <label style={{ color: 'var(--gray-300)', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
-                                Return Rate (%)
-                            </label>
-                            <input
-                                type="number"
-                                step="0.1"
-                                value={fundRate}
-                                onChange={e => setFundRate(e.target.value)}
-                                style={{
-                                    width: '100%', padding: '10px 14px', borderRadius: '8px',
-                                    background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)',
-                                    color: 'var(--white)', fontSize: '15px', fontFamily: 'var(--font-mono)',
-                                    outline: 'none', boxSizing: 'border-box'
-                                }}
-                            />
+                        <div style={{ background: 'rgba(255,255,255,.03)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>Risk Label</span>
+                                <span className={`badge risk-${getRateForRisk(fundModal.score).label.toLowerCase()}`}>{getRateForRisk(fundModal.score).label}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>Interest Rate</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>{getRateForRisk(fundModal.score).rate}% / month</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>Advance Amount (85%)</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>₹{parseFloat(fundAmount).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>Estimated Interest</span>
+                                <span style={{ color: 'var(--amber)', fontWeight: 600 }}>
+                                    ₹{Math.round(parseFloat(fundAmount) * (getRateForRisk(fundModal.score).rate / 100) * ((Math.ceil((new Date(fundModal.due) - new Date()) / (1000 * 60 * 60 * 24)) || 1) / 30)).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-dim)', margin: '12px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'var(--white)', fontSize: '13px', fontWeight: 600 }}>Estimated Total Repayment</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 700 }}>₹{(parseFloat(fundAmount) + Math.round(parseFloat(fundAmount) * (getRateForRisk(fundModal.score).rate / 100) * ((Math.ceil((new Date(fundModal.due) - new Date()) / (1000 * 60 * 60 * 24)) || 1) / 30))).toLocaleString('en-IN')}</span>
+                            </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -655,6 +776,56 @@ export default function FinanceDashboard() {
                             }}
                         >
                             Got it!
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Settle Summary Modal */}
+            {settleSummary && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+                }}>
+                    <div style={{
+                        background: 'var(--bg-card)', border: '1px solid var(--blue)',
+                        borderRadius: '20px', padding: '40px', width: '480px', maxWidth: '90vw',
+                        textAlign: 'center', boxShadow: '0 0 40px rgba(59,130,246,.2)'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>🤝</div>
+                        <h2 style={{ color: 'var(--white)', fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>
+                            Invoice Settled Successfully
+                        </h2>
+                        
+                        <div style={{ background: 'rgba(255,255,255,.03)', borderRadius: '12px', padding: '24px', marginBottom: '24px', textAlign: 'left' }}>
+                            <div style={{ marginBottom: '12px', color: 'var(--gray-300)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Principal (Advance):</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>₹{settleSummary.principal.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style={{ marginBottom: '12px', color: 'var(--gray-300)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Duration:</span>
+                                <span style={{ color: 'var(--white)', fontWeight: 600 }}>{settleSummary.daysElapsed} Days</span>
+                            </div>
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-dim)', margin: '16px 0' }} />
+                            <div style={{ marginBottom: '12px', color: 'var(--green)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Interest Earned (3%/mo):</span>
+                                <span style={{ fontWeight: 700 }}>+₹{settleSummary.interest.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div style={{ color: 'var(--gray-400)', display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginTop: '8px' }}>
+                                <span>Seller Profit:</span>
+                                <span>₹{settleSummary.profit.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setSettleSummary(null)}
+                            style={{
+                                width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                                background: 'var(--blue)', color: '#fff', fontSize: '16px',
+                                fontWeight: 700, cursor: 'pointer'
+                            }}
+                        >
+                            Complete Settlement
                         </button>
                     </div>
                 </div>

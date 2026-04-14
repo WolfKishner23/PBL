@@ -1,7 +1,14 @@
 const Invoice = require('../models/Invoice');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { sendInvoiceStatusEmail } = require('../services/email');
+
+const RISK_RATES = {
+    low: 2.0,
+    medium: 4.0,
+    high: 6.0
+};
 
 // ─── REVIEW INVOICE (Finance / Admin) ─────────────────────────────────────────
 exports.reviewInvoice = async (req, res) => {
@@ -117,13 +124,16 @@ exports.fundInvoice = async (req, res) => {
             });
         }
 
+        // Determine rate based on risk level
+        const rate = RISK_RATES[invoice.riskLevel] || 5.0;
+
         // Create transaction
         const transaction = await Transaction.create({
             invoiceId: invoice.id,
             financierId: req.user.id,
             businessId: invoice.uploadedBy,
-            fundedAmount: fundedAmount || invoice.amount * 0.85,
-            returnRate: returnRate || 5.0,
+            fundedAmount: invoice.amount * 0.85, // Enforce 85% advance
+            returnRate: rate,
             status: 'active'
         });
 
@@ -204,7 +214,7 @@ exports.payInvoice = async (req, res) => {
     }
 };
 
-// ─── SETTLE INVOICE (Seller/Admin closes invoice) ──────────────────────────────
+// ─── SETTLE INVOICE (Finance/Admin closes invoice) ─────────────────────────────
 exports.settleInvoice = async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id);
@@ -215,17 +225,62 @@ exports.settleInvoice = async (req, res) => {
         }
 
         const transaction = await Transaction.findOne({ where: { invoiceId: invoice.id } });
-        if (transaction) {
-            await transaction.update({ status: 'completed' });
+        if (!transaction) {
+            return res.status(404).json({ success: false, error: 'Associated transaction not found' });
         }
 
-        await invoice.update({ status: 'closed' });
-
-        // Calculate summary data for frontend
+        // 1. Calculate Interest: Principal × 3% × (days/30)
         const principal = parseFloat(transaction.fundedAmount);
         const amount = parseFloat(invoice.amount);
-        const interest = principal * 0.03 * 1; // Assuming 1 month for simple message if diff not calculated
+        
+        // Calculate days between funding and now
+        const fundedAt = new Date(transaction.createdAt);
+        const now = new Date();
+        const diffTime = Math.abs(now - fundedAt);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // At least 1 day
+        
+        const months = diffDays / 30;
+        const interest = principal * (transaction.returnRate / 100) * months;
         const profit = amount - principal - interest;
+
+        // 2. Update Statuses
+        await transaction.update({ status: 'completed' });
+        await invoice.update({ status: 'settled' });
+
+        // 3. Create Notifications
+        const messages = {
+            seller: `Invoice ${invoice.invoiceNumber} has been closed. You received ₹${principal.toLocaleString('en-IN')} early, repaid ₹${principal.toLocaleString('en-IN')}, your profit is ₹${profit.toLocaleString('en-IN')}`,
+            buyer: `Invoice ${invoice.invoiceNumber} has been closed. You paid ₹${amount.toLocaleString('en-IN')} on time. Transaction complete.`,
+            finance: `Invoice ${invoice.invoiceNumber} settled. You earned ₹${interest.toLocaleString('en-IN')} profit.`
+        };
+
+        // Seller notification
+        await Notification.create({
+            userId: invoice.uploadedBy,
+            message: messages.seller,
+            type: 'success',
+            invoiceId: invoice.id
+        });
+
+        // Buyer notification (Debtor)
+        // Find debtor user by company name if possible, or just skip if no user account
+        const debtorUser = await User.findOne({ where: { company: invoice.debtorCompany } });
+        if (debtorUser) {
+            await Notification.create({
+                userId: debtorUser.id,
+                message: messages.buyer,
+                type: 'success',
+                invoiceId: invoice.id
+            });
+        }
+
+        // Finance Partner notification
+        await Notification.create({
+            userId: transaction.financierId,
+            message: messages.finance,
+            type: 'success',
+            invoiceId: invoice.id
+        });
 
         res.json({
             success: true,
@@ -234,7 +289,8 @@ exports.settleInvoice = async (req, res) => {
                 principal,
                 interest,
                 profit,
-                totalPaid: amount
+                totalPaid: amount,
+                daysElapsed: diffDays
             }
         });
     } catch (error) {

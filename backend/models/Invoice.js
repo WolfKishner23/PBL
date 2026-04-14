@@ -53,7 +53,7 @@ const Invoice = sequelize.define('Invoice', {
         }
     },
     status: {
-        type: DataTypes.ENUM('draft', 'submitted', 'review', 'approved', 'funded', 'confirmed', 'paid', 'closed', 'rejected'),
+        type: DataTypes.ENUM('draft', 'submitted', 'review', 'approved', 'funded', 'confirmed', 'paid', 'closed', 'settled', 'rejected'),
         defaultValue: 'draft'
     },
     riskScore: {

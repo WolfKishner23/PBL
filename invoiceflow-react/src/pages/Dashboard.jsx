@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { invoiceAPI, factoringAPI } from '../services/api';
+import { invoiceAPI, factoringAPI, notificationAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Timeline from '../components/Timeline';
 import '../styles/dashboard.css';
@@ -18,6 +18,7 @@ export default function Dashboard() {
     const [paymentSummary, setPaymentSummary] = useState(null);
     const [dateStr, setDateStr] = useState('');
     const [invoices, setInvoices] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
     const notifRef = useRef(null);
     const chartRef = useRef(null);
@@ -28,19 +29,23 @@ export default function Dashboard() {
     const h = new Date().getHours();
     const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 
-    // Fetch invoices from API
+    // Fetch data from API
     useEffect(() => {
-        const fetchInvoices = async () => {
+        const fetchData = async () => {
             try {
-                const res = await invoiceAPI.getAll();
-                setInvoices(res.data.invoices || []);
+                const [invRes, notifRes] = await Promise.all([
+                    invoiceAPI.getAll(),
+                    notificationAPI.getAll()
+                ]);
+                setInvoices(invRes.data.invoices || []);
+                setNotifications(notifRes.data.notifications || []);
             } catch (err) {
-                console.error('Failed to fetch invoices:', err);
+                console.error('Failed to fetch data:', err);
             } finally {
                 setLoadingData(false);
             }
         };
-        fetchInvoices();
+        fetchData();
     }, []);
 
     useEffect(() => {
@@ -237,13 +242,18 @@ export default function Dashboard() {
     };
 
     const getStatusClass = (status) => {
-        const map = { draft: 'status-review', submitted: 'status-review', review: 'status-review', confirmed: 'status-approved', approved: 'status-approved', funded: 'status-funded', paid: 'status-paid', closed: 'status-closed', rejected: 'status-rejected' };
+        const map = { draft: 'status-review', submitted: 'status-review', review: 'status-review', confirmed: 'status-approved', approved: 'status-approved', funded: 'status-funded', paid: 'status-paid', settled: 'status-closed', closed: 'status-closed', rejected: 'status-rejected' };
         return map[status] || 'status-review';
     };
 
     const getStatusLabel = (status) => {
-        const map = { draft: 'Draft', submitted: 'Awaiting Confirmation', review: 'Awaiting Confirmation', confirmed: 'Buyer Confirmed', approved: 'Approved', funded: 'Funded', paid: 'Paid', closed: 'Closed', rejected: 'Rejected' };
+        const map = { draft: 'Draft', submitted: 'Awaiting Confirmation', review: 'Awaiting Confirmation', confirmed: 'Buyer Confirmed', approved: 'Approved', funded: 'Funded', paid: 'Paid', settled: 'Settled', closed: 'Closed', rejected: 'Rejected' };
         return map[status] || status;
+    };
+
+    const getRateForRisk = (level) => {
+        const map = { low: 2, medium: 4, high: 6 };
+        return map[level?.toLowerCase()] || 0;
     };
 
     // Stats
@@ -278,18 +288,6 @@ export default function Dashboard() {
         } catch (err) {
             console.error('Pay failed:', err);
             alert('Pay failed: ' + (err.response?.data?.error || err.message));
-        }
-    }
-
-    async function handleSettle(id) {
-        try {
-            const resSettle = await factoringAPI.settle(id);
-            setPaymentSummary(resSettle.data.summary);
-            const res = await invoiceAPI.getAll();
-            setInvoices(res.data.invoices || []);
-        } catch (err) {
-            console.error('Settle failed:', err);
-            alert('Settle failed: ' + (err.response?.data?.error || err.message));
         }
     }
 
@@ -353,16 +351,25 @@ export default function Dashboard() {
                                 <div className="notif-dropdown open">
                                     <div className="notif-header">
                                         <span className="notif-title">Notifications</span>
-                                        <button className="notif-clear" onClick={() => setNotifCleared(true)}>Clear all</button>
+                                        <button className="notif-clear" onClick={async () => { 
+                                            await notificationAPI.clear();
+                                            setNotifications([]);
+                                            setNotifCleared(true);
+                                        }}>Clear all</button>
                                     </div>
-                                    {!notifCleared ? (
+                                    {notifications.length > 0 && !notifCleared ? (
                                         <ul className="notif-list">
-                                            {invoices.slice(0, 5).map((inv, i) => (
-                                                <li className="notif-item" key={i}>
-                                                    <span className="notif-icon">{inv.status === 'funded' ? '💸' : inv.status === 'approved' ? '✅' : inv.status === 'rejected' ? '❌' : '📄'}</span>
+                                            {notifications.map((n, i) => (
+                                                <li className="notif-item" key={i} onClick={async () => {
+                                                    if (!n.isRead) {
+                                                        await notificationAPI.markAsRead(n.id);
+                                                        setNotifications(notifications.map(no => no.id === n.id ? {...no, isRead: true} : no));
+                                                    }
+                                                }} style={{ opacity: n.isRead ? 0.6 : 1 }}>
+                                                    <span className="notif-icon">{n.type === 'success' ? '✅' : '🔔'}</span>
                                                     <div className="notif-body">
-                                                        <span className="notif-msg"><strong>{inv.invoiceNumber}</strong> — {getStatusLabel(inv.status)}</span>
-                                                        <span className="notif-time">{formatDate(inv.updatedAt)}</span>
+                                                        <span className="notif-msg">{n.message}</span>
+                                                        <span className="notif-time">{formatDate(n.createdAt)}</span>
                                                     </div>
                                                 </li>
                                             ))}
@@ -458,7 +465,7 @@ export default function Dashboard() {
                                 <button className={`main-tab ${dashboardTab === 'bills' ? 'active' : ''}`} onClick={() => setDashboardTab('bills')}>Bills I Need to Pay</button>
                             </div>
                             <div className="table-tabs">
-                                {['all', 'submitted', 'confirmed', 'funded', 'paid', 'closed'].map(f => (
+                                {['all', 'submitted', 'confirmed', 'funded', 'paid', 'settled'].map(f => (
                                     <button key={f} className={`tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
                                         {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
                                     </button>
@@ -512,17 +519,16 @@ export default function Dashboard() {
                                     </tr>
                                     {isExpanded && (
                                         <tr>
-                                            <td colSpan="7" style={{ background: 'rgba(255,255,255,.02)', padding: '20px' }}>
+                                            <td colSpan="7" style={{ background: 'rgba(255,255,255,.02)', padding: '24px', borderBottom: '1px solid var(--border-dim)' }}>
+                                                <h4 style={{ color: 'var(--gray-300)', fontSize: '13px', fontWeight: 600, marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '.5px' }}>Transaction Timeline</h4>
                                                 <Timeline status={inv.status} />
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid var(--border-dim)', paddingTop: '16px' }}>
                                                     {dashboardTab === 'bills' && (inv.status === 'submitted' || inv.status === 'review') && (
                                                         <button className="btn-primary btn-sm" onClick={() => handleConfirm(inv.id)}>Confirm Invoice</button>
                                                     )}
                                                     {dashboardTab === 'bills' && inv.status === 'funded' && (
                                                         <button className="btn-primary btn-sm" onClick={() => handlePay(inv.id)}>Pay Now</button>
-                                                    )}
-                                                    {dashboardTab === 'owed' && inv.status === 'paid' && (
-                                                        <button className="btn-primary btn-sm" onClick={() => handleSettle(inv.id)}>Close & Receive Profit</button>
                                                     )}
                                                 </div>
                                             </td>
