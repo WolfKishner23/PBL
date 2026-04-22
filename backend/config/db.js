@@ -34,8 +34,8 @@ const sequelize = process.env.DATABASE_URL
                 idle: 10000
             }
         }
-    }
-);
+    );
+
 
 const connectDB = async () => {
     try {
