@@ -76,7 +76,7 @@ exports.extractInvoiceData = async (req, res) => {
         
         const response = await axios.post(`${AI_SERVICE_URL}/api/extract-invoice`, formData, {
             headers: formData.getHeaders(),
-            timeout: 30000 // 30 second timeout for OCR
+            timeout: 60000 // Increased to 60 seconds for OCR fallback
         });
 
 
@@ -91,8 +91,16 @@ exports.extractInvoiceData = async (req, res) => {
                 error: 'AI Service unavailable'
             });
         }
-        console.error('AI extract error:', error.message);
-        res.status(500).json({ success: false, error: 'Data extraction failed' });
+
+        // Pass through AI service's detailed error message if available
+        const aiErrorDetail = error.response?.data?.detail;
+        console.error('AI extract error:', aiErrorDetail || error.message);
+        
+        res.status(500).json({ 
+            success: false, 
+            error: 'Data extraction failed', 
+            detail: aiErrorDetail || error.message 
+        });
     }
 };
 
