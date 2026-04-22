@@ -111,8 +111,9 @@ def _extract_text_from_file(file_path: str) -> str:
     if ext == '.pdf':
         try:
             import fitz  # PyMuPDF
+            print(f"[AI] Successfully imported fitz (PyMuPDF)")
             doc = fitz.open(file_path)
-            print(f"[AI] Using PyMuPDF for {file_path}")
+            print(f"[AI] Opened PDF: {file_path}")
             for page in doc:
                 text += page.get_text()
             doc.close()
@@ -121,13 +122,13 @@ def _extract_text_from_file(file_path: str) -> str:
             print(f"[AI] PyMuPDF failed: {str(e)}")
             try:
                 from PyPDF2 import PdfReader
+                print(f"[AI] Successfully imported PyPDF2 (fallback)")
                 reader = PdfReader(file_path)
-                print(f"[AI] Using PyPDF2 as fallback")
                 for page in reader.pages:
                     text += page.extract_text() or ""
                 print(f"[AI] PyPDF2 extracted {len(text)} characters")
             except Exception as e2:
-                print(f"[AI] PyPDF2 failed: {str(e2)}")
+                print(f"[AI] PyPDF2 fallback also failed: {str(e2)}")
                 pass
 
     # Try image OCR
@@ -338,7 +339,10 @@ async def extract_invoice(file: UploadFile = File(...)):
             "confidence": 0.85 if raw_text.strip() else 0.0,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[AI] CRITICAL EXTRACTION ERROR:\n{error_trace}")
+        raise HTTPException(status_code=500, detail=f"Extraction crashed: {str(e)}")
 
 
 # ─── Run Server ──────────────────────────────────────────────────────────────
