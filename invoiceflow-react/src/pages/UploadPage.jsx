@@ -127,7 +127,9 @@ export default function UploadPage() {
         } catch (err) {
             console.warn('AI extraction unavailable:', err.message);
             setExtractionStatus('failed');
+            setError(`AI Extraction Failed: ${err.response?.data?.detail || err.message}. Please fill fields manually or check logs.`);
         }
+
     }
 
     function handleDrop(e) {
