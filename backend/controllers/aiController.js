@@ -65,11 +65,20 @@ exports.extractInvoiceData = async (req, res) => {
         const FormData = require('form-data');
         const fs = require('fs');
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(req.file.path));
-
-        const response = await axios.post(`${AI_SERVICE_URL}/api/extract-invoice`, formData, {
-            headers: formData.getHeaders()
+        
+        // Explicitly include filename to help Python service detect file type
+        formData.append('file', fs.createReadStream(req.file.path), {
+            filename: req.file.originalname,
+            contentType: req.file.mimetype
         });
+
+        console.log(`[Backend] Sending extraction request to AI Service: ${AI_SERVICE_URL}/api/extract-invoice`);
+        
+        const response = await axios.post(`${AI_SERVICE_URL}/api/extract-invoice`, formData, {
+            headers: formData.getHeaders(),
+            timeout: 30000 // 30 second timeout for OCR
+        });
+
 
         res.json({
             success: true,

@@ -105,41 +105,54 @@ def _extract_text_from_file(file_path: str) -> str:
     """Extract text from PDF or image file."""
     ext = os.path.splitext(file_path)[1].lower()
     text = ""
-
+    print(f"[AI] Extracting text from {file_path} (ext: {ext})")
+    
     # Try PDF text extraction
     if ext == '.pdf':
         try:
             import fitz  # PyMuPDF
             doc = fitz.open(file_path)
+            print(f"[AI] Using PyMuPDF for {file_path}")
             for page in doc:
                 text += page.get_text()
             doc.close()
-        except ImportError:
+            print(f"[AI] PyMuPDF extracted {len(text)} characters")
+        except Exception as e:
+            print(f"[AI] PyMuPDF failed: {str(e)}")
             try:
                 from PyPDF2 import PdfReader
                 reader = PdfReader(file_path)
+                print(f"[AI] Using PyPDF2 as fallback")
                 for page in reader.pages:
                     text += page.extract_text() or ""
-            except ImportError:
+                print(f"[AI] PyPDF2 extracted {len(text)} characters")
+            except Exception as e2:
+                print(f"[AI] PyPDF2 failed: {str(e2)}")
                 pass
 
     # Try image OCR
     if not text.strip() and ext in ('.png', '.jpg', '.jpeg', '.pdf'):
+        print(f"[AI] Text empty after PDF extraction. attempting Tesseract OCR...")
         try:
             from PIL import Image
             import pytesseract
             if ext == '.pdf':
                 try:
                     from pdf2image import convert_from_path
+                    print(f"[AI] Converting PDF to images for OCR...")
                     images = convert_from_path(file_path, first_page=1, last_page=1)
                     if images:
                         text = pytesseract.image_to_string(images[0])
-                except ImportError:
+                        print(f"[AI] Tesseract extracted {len(text)} characters from PDF page")
+                except Exception as e3:
+                    print(f"[AI] PDF to image OCR failed: {str(e3)}")
                     pass
             else:
                 img = Image.open(file_path)
                 text = pytesseract.image_to_string(img)
-        except ImportError:
+                print(f"[AI] Tesseract extracted {len(text)} characters from image")
+        except Exception as e4:
+            print(f"[AI] Tesseract OCR failed: {str(e4)}")
             pass
 
     return text
@@ -316,6 +329,7 @@ async def extract_invoice(file: UploadFile = File(...)):
 
         # Parse fields from text
         extracted = _parse_invoice_fields(raw_text)
+        print(f"[AI] Parsed fields: {list(extracted.keys())} (Success: {extracted.get('amount') is not None})")
 
         return {
             "success": True,
