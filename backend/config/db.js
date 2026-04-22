@@ -16,6 +16,12 @@ const sequelize = new Sequelize(
             }
         } : {},
         logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
+        },
         pool: {
             max: 5,
             min: 0,
