@@ -1,11 +1,6 @@
-databases:
-  - name: invoiceflow-db
-    plan: free
-    databaseName: invoiceflow
-    user: invoiceflow_user
-
 services:
   # ─── Node.js Backend API ───────────────────────────────────────
+  # Root Directory: backend
   - type: web
     name: invoiceflow-api
     runtime: node
@@ -16,30 +11,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 5000
-      - key: DB_HOST
-        fromDatabase:
-          name: invoiceflow-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: invoiceflow-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: invoiceflow-db
-          property: database
-      - key: DB_USER
-        fromDatabase:
-          name: invoiceflow-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: invoiceflow-db
-          property: password
+      - key: DATABASE_URL
+        sync: false # Set manually in Render dashboard from Neon
       - key: JWT_SECRET
         generateValue: true
+      - key: ADMIN_SECRET
+        value: invoiceflow-admin-secret-2024 # Match with Frontend
       - key: AI_SERVICE_URL
         fromService:
           name: invoiceflow-ai
@@ -48,28 +25,31 @@ services:
       - key: FRONTEND_URL
         value: https://invoiceflow-frontend.onrender.com
 
-  # ─── Python AI Service ─────────────────────────────────────────
+  # ─── Python AI Service (OCR Enabled) ───────────────────────────
+  # Root Directory: ai-service
   - type: web
     name: invoiceflow-ai
-    runtime: python
+    runtime: docker
     plan: free
     rootDir: ai-service
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PORT
         value: 8000
 
   # ─── React Frontend ────────────────────────────────────────────
-  - type: web
+  # Root Directory: invoiceflow-react
+  - type: static_site
     name: invoiceflow-frontend
-    runtime: static
     rootDir: invoiceflow-react
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    publishPath: dist
     envVars:
       - key: VITE_API_URL
         value: https://invoiceflow-api.onrender.com
+      - key: VITE_AI_URL
+        value: https://invoiceflow-ai.onrender.com
+      - key: VITE_ADMIN_SECRET
+        value: invoiceflow-admin-secret-2024 # Match with Backend
     routes:
       - type: rewrite
         source: /*

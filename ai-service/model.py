@@ -2,14 +2,6 @@
 InvoiceFlow AI Service — Risk Prediction Model (Bridged to custom CSV pipeline)
 """
 
-import os
-import sys
-import numpy as np
-
-# Temporarily append parent directory to import the new system
-PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(PARENT_DIR)
-
 try:
     from invoice_risk_system import predict_invoice_risk
     print("[OK] Bridged to custom CSV ML pipeline (invoice_risk_system.py)")
@@ -54,13 +46,10 @@ def predict_risk(invoice_data: dict) -> dict:
 
     # 2. Call new ML Model
     if ML_BRIDGE_ACTIVE:
-        old_cwd = os.getcwd()
-        os.chdir(PARENT_DIR)
-        
         try:
             model_res = predict_invoice_risk(mapped_data)
-        finally:
-            os.chdir(old_cwd)
+        except Exception as e:
+            model_res = {"error": str(e)}
             
         if "error" in model_res:
             prediction_label = "Medium Risk"

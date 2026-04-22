@@ -24,7 +24,7 @@ API.interceptors.request.use((config) => {
     
     const adminName = localStorage.getItem('invoiceflow_admin');
     if (adminName) {
-        config.headers['x-admin-secret'] = 'invoiceflow-admin-secret-2024';
+        config.headers['x-admin-secret'] = import.meta.env.VITE_ADMIN_SECRET || 'invoiceflow-admin-secret-2024';
     }
     return config;
 });
