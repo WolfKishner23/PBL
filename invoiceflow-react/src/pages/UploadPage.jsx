@@ -105,6 +105,22 @@ export default function UploadPage() {
                 }));
                 setFieldErrors({}); // clear errors after populating
                 setExtractionStatus('done');
+
+                // Instant Risk Assessment
+                try {
+                    const riskRes = await invoiceAPI.getRiskAssessment({
+                        amount: data.amount,
+                        debtorCompany: data.debtorCompany,
+                        debtorGST: data.debtorGST,
+                        dueDate: data.dueDate,
+                        paymentTerms: data.paymentTerms,
+                        industry: data.industry,
+                        description: data.description
+                    });
+                    setRiskResult(riskRes.data.riskResult);
+                } catch (riskErr) {
+                    console.warn('Instant risk assessment failed:', riskErr.message);
+                }
             } else {
                 setExtractionStatus('failed');
             }
@@ -356,12 +372,12 @@ export default function UploadPage() {
 
                             {/* Create Invoice Button — always visible */}
                             <button className="btn-primary upload-extract-btn" onClick={handleExtract} disabled={extracting || showRisk} style={{ marginTop: '16px' }}>
-                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Extract  →'}
+                                {extracting ? 'Creating invoice…' : showRisk ? 'Invoice Created ✓' : 'Create Invoice & Proceed  →'}
                             </button>
                         </div>
 
-                        {/* STEP 3 — AI Risk Score Card */}
-                        {showRisk && (
+                        {/* STEP 3 — AI Risk Score Card (Show earlier if riskResult is available) */}
+                        {(showRisk || riskResult) && (
                             <div className="card risk-card">
                                 <div className="card-header">
                                     <div>
@@ -416,13 +432,15 @@ export default function UploadPage() {
 
                                 {/* Actions */}
                                 <div className="risk-actions">
-                                    <button className="btn-outline-action" onClick={handleBack}>
-                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        Back
-                                    </button>
-                                    <button className="btn-primary" onClick={handleSubmit} disabled={submitted} style={submitted ? { background: 'var(--green)' } : {}}>
-                                        {submitted ? '✓ Submitted Successfully!' : 'Submit for Funding'}
-                                        {!submitted && <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                    {createdInvoice && (
+                                        <button className="btn-outline-action" onClick={handleBack}>
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 7H3m0 0l4 4M3 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                            Back
+                                        </button>
+                                    )}
+                                    <button className="btn-primary" onClick={handleSubmit} disabled={submitted || !createdInvoice} style={submitted ? { background: 'var(--green)' } : (!createdInvoice ? { opacity: 0.5, cursor: 'not-allowed' } : {})}>
+                                        {!createdInvoice ? 'Complete Steps Above to Submit' : submitted ? '✓ Submitted Successfully!' : 'Submit for Funding'}
+                                        {!submitted && createdInvoice && <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </button>
                                 </div>
                             </div>

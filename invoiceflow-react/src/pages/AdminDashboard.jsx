@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { adminAPI } from '../services/api';
-import WalletOverview from '../components/WalletOverview';
 import '../styles/dashboard.css';
 import '../styles/admin.css';
 
@@ -25,6 +24,23 @@ const SECTIONS = {
 
 export default function AdminDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const getStatusLabel = (status) => {
+        const map = {
+            draft: 'Draft',
+            submitted: 'Pending',
+            review: 'In Review',
+            confirmed: 'Buyer Confirmed',
+            approved: 'Approved',
+            funded: 'Funded',
+            paid: 'Paid by Buyer',
+            settled: 'Finished',
+            closed: 'Finished',
+            rejected: 'Rejected'
+        };
+        return map[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown');
+    };
     const [activeSection, setActiveSection] = useState('users');
     const [roleFilter, setRoleFilter] = useState('');
     const [users, setUsers] = useState([]);
@@ -84,7 +100,7 @@ export default function AdminDashboard() {
                     initials: u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
                     email: u.email,
                     role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
-                    status: u.isSuspended ? 'Suspended' : u.isVerified ? 'Active' : 'Pending',
+                    status: u.isSuspended ? 'Suspended' : u.isVerified ? 'Active' : 'Unverified',
                     invoices: u.invoiceCount || 0,
                     joined: new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
                 })));
@@ -167,7 +183,6 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                <WalletOverview />
 
                 {/* Stat Cards */}
                 <section className="stat-cards">
@@ -179,8 +194,8 @@ export default function AdminDashboard() {
                     {[
                         { label: 'Total Users', value: stats?.totalUsers?.toString() || '0', accent: 'blue' },
                         { label: 'Total Invoices', value: stats?.totalInvoices?.toString() || '0', accent: 'green' },
-                        { label: 'Pending Invoices', value: stats?.pendingInvoices?.toString() || '0', accent: 'amber' },
-                        { label: 'Funded Invoices', value: stats?.fundedInvoices?.toString() || '0', accent: 'purple' },
+                        { label: 'Pending Review', value: stats?.pendingInvoices?.toString() || '0', accent: 'amber' },
+                        { label: 'Settled (Finished)', value: stats?.settledInvoices?.toString() || '0', accent: 'purple' },
                     ].map((s, i) => (
                         <div className="stat-card" data-accent={s.accent} key={i}>
                             <div className="stat-card-top"><span className="stat-card-label">{s.label}</span></div>
@@ -239,7 +254,7 @@ export default function AdminDashboard() {
                                             </td>
                                             <td style={{ color: 'var(--gray-400)' }}>{u.email}</td>
                                             <td><span className={`badge ${u.role === 'Finance' ? 'status-approved' : 'status-review'}`}>{u.role}</span></td>
-                                            <td><span className={`badge ${u.status === 'Active' ? 'status-funded' : 'status-rejected'}`}>{u.status}</span></td>
+                                            <td><span className={`badge ${u.status === 'Active' ? 'status-funded' : (u.status === 'Unverified' ? 'status-review' : 'status-rejected')}`}>{u.status}</span></td>
                                             <td className="mono">{u.invoices}</td>
                                             <td style={{ color: 'var(--gray-400)' }}>{u.joined}</td>
                                             <td>
@@ -284,7 +299,7 @@ export default function AdminDashboard() {
                                             </td>
                                             <td>{inv.debtorCompany}</td>
                                             <td className="mono" style={{ color: 'var(--white)' }}>₹{parseFloat(inv.amount).toLocaleString('en-IN')}</td>
-                                            <td><span className={`badge status-${inv.status}`}>{inv.status}</span></td>
+                                            <td><span className={`badge status-${inv.status}`}>{getStatusLabel(inv.status)}</span></td>
                                             <td><span className={`badge risk-${inv.riskLevel || 'medium'}`}>{inv.riskScore || '—'} ({inv.riskLevel || 'N/A'})</span></td>
                                             <td>
                                                 {inv.transaction?.financier?.name ? (

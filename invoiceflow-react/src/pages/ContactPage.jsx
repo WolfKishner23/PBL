@@ -90,8 +90,8 @@ export default function ContactPage() {
                                 </svg>
                             </div>
                             <h3>Office Location</h3>
-                            <p>4th Floor, Technopark Tower B</p>
-                            <p>Whitefield, Bengaluru, Karnataka 560066, India</p>
+                            <p>PICT Pune college office</p>
+                            <p>Dhankawadi, Pune, Maharashtra 411043, India</p>
                         </div>
                     </div>
 

@@ -13,15 +13,11 @@ API.interceptors.request.use((config) => {
     const token = localStorage.getItem('invoiceflow_token') || localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        // console.log('🔹 JWT Attached:', token.substring(0, 15) + '...');
-    } else {
-        // console.warn('🔸 No JWT token found in localStorage');
     }
     
     const adminName = localStorage.getItem('invoiceflow_admin');
     if (adminName) {
         config.headers['x-admin-secret'] = 'invoiceflow-admin-secret-2024';
-        // console.log('🔹 Admin Secret Attached');
     }
     return config;
 });
@@ -65,6 +61,7 @@ export const invoiceAPI = {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
     confirm: (id) => API.post(`/invoices/${id}/confirm`),
+    getRiskAssessment: (data) => API.post('/invoices/risk-assessment', data),
 };
 
 // ─── Factoring API ────────────────────────────────────────────────────────────

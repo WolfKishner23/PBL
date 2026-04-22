@@ -16,12 +16,13 @@ exports.getDashboardStats = async (req, res) => {
 
         console.log(`📈 Counts - Users: ${totalUsers}, Invoices: ${totalInvoices}, Transactions: ${totalTransactions}`);
 
-        // Count pending invoices (submitted or review status)
+        // Count invoices by category
         const pendingInvoices = await Invoice.count({ where: { status: { [Op.in]: ['submitted', 'review'] } } });
-        const approvedInvoices = await Invoice.count({ where: { status: 'approved' } });
-        const fundedInvoices = await Invoice.count({ where: { status: 'funded' } });
+        const approvedInvoices = await Invoice.count({ where: { status: { [Op.in]: ['confirmed', 'approved'] } } });
+        const fundedInvoices = await Invoice.count({ where: { status: { [Op.in]: ['funded', 'paid', 'settled'] } } });
+        const settledInvoices = await Invoice.count({ where: { status: 'settled' } });
 
-        console.log(`🔍 Statuses - Pending: ${pendingInvoices}, Approved: ${approvedInvoices}, Funded: ${fundedInvoices}`);
+        console.log(`🔍 Statuses - Pending: ${pendingInvoices}, Approved: ${approvedInvoices}, Funded/Done: ${fundedInvoices}, Settled: ${settledInvoices}`);
 
         const totalFunded = await Transaction.sum('fundedAmount') || 0;
 
@@ -64,6 +65,7 @@ exports.getDashboardStats = async (req, res) => {
                 pendingInvoices,
                 approvedInvoices,
                 fundedInvoices,
+                settledInvoices,
                 totalFunded,
                 totalInterestEarned,
                 usersByRole

@@ -241,8 +241,13 @@ exports.payInvoice = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Only funded invoices can be paid' });
         }
 
-        // Find Buyer User
-        const buyer = await User.findOne({ where: { company: invoice.debtorCompany } });
+        // Find Buyer User (using trimmed, case-insensitive match)
+        const buyer = await User.findOne({ 
+            where: sequelize.where(
+                sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('company'))),
+                (invoice.debtorCompany || '').trim().toLowerCase()
+            )
+        });
         if (!buyer) {
             await t.rollback();
             return res.status(400).json({ success: false, error: 'Buyer is not a registered user on InvoiceFlow. Payment cannot be processed.' });
@@ -343,8 +348,13 @@ exports.settleInvoice = async (req, res) => {
         });
 
         // Buyer notification (Debtor)
-        // Find debtor user by company name if possible, or just skip if no user account
-        const debtorUser = await User.findOne({ where: { company: invoice.debtorCompany } });
+        // Find debtor user by company name (trimmed, case-insensitive)
+        const debtorUser = await User.findOne({ 
+            where: sequelize.where(
+                sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('company'))),
+                (invoice.debtorCompany || '').trim().toLowerCase()
+            )
+        });
         if (debtorUser) {
             await Notification.create({
                 userId: debtorUser.id,

@@ -40,7 +40,7 @@ exports.createInvoice = async (req, res) => {
         const invoice = await Invoice.create({
             invoiceNumber,
             amount,
-            debtorCompany,
+            debtorCompany: debtorCompany?.trim(),
             debtorGST,
             invoiceDate,
             dueDate,
@@ -177,7 +177,7 @@ exports.updateInvoice = async (req, res) => {
         const { amount, debtorCompany, debtorGST, dueDate, paymentTerms, description } = req.body;
         await invoice.update({
             amount: amount || invoice.amount,
-            debtorCompany: debtorCompany || invoice.debtorCompany,
+            debtorCompany: debtorCompany ? debtorCompany.trim() : invoice.debtorCompany,
             debtorGST: debtorGST !== undefined ? debtorGST : invoice.debtorGST,
             dueDate: dueDate || invoice.dueDate,
             paymentTerms: paymentTerms !== undefined ? paymentTerms : invoice.paymentTerms,
@@ -356,6 +356,50 @@ exports.uploadPDF = async (req, res) => {
     } catch (error) {
         console.error('Upload PDF error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// ─── GET RISK ASSESSMENT (Preview before submission) ────────────────────────
+exports.getRiskAssessment = async (req, res) => {
+    try {
+        const { amount, debtorCompany, debtorGST, invoiceDate, dueDate, paymentTerms, industry } = req.body;
+
+        if (!amount || !debtorCompany) {
+            return res.status(400).json({ success: false, error: 'Amount and debtor company are required' });
+        }
+
+        // 1. Calculate Advanced Risk Factors
+        // Note: For preview, we use the current user's ID
+        const concentration = await riskService.calculateConcentrationRisk(req.user.id, debtorCompany);
+        const externalRating = await riskService.getExternalCreditRating(debtorCompany);
+        const internalHistory = await riskService.getInternalPaymentScore(debtorCompany);
+
+        // 2. Call AI Service
+        try {
+            const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
+                invoiceData: {
+                    amount: parseFloat(amount),
+                    debtorCompany,
+                    debtorGST,
+                    invoiceDate,
+                    dueDate,
+                    paymentTerms,
+                    industry,
+                    concentrationRiskScore: concentration.score,
+                    externalCreditRating: externalRating,
+                    internalPaymentScore: internalHistory.score,
+                    invoiceHistoryCount: internalHistory.count
+                }
+            });
+
+            res.json({ success: true, riskResult: aiResponse.data });
+        } catch (aiError) {
+            console.warn('⚠️  AI Service unavailable during preview:', aiError.message);
+            res.status(503).json({ success: false, error: 'AI Risk Service currently unavailable. Please try again later.' });
+        }
+    } catch (error) {
+        console.error('Risk assessment preview error:', error);
+        res.status(500).json({ success: false, error: 'Server error during risk assessment' });
     }
 };
 

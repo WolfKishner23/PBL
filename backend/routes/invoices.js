@@ -11,6 +11,7 @@ const {
     submitInvoice,
     confirmInvoice,
     uploadPDF,
+    getRiskAssessment,
     createInvoiceValidation
 } = require('../controllers/invoiceController');
 
@@ -40,5 +41,8 @@ router.post('/:id/confirm', authorize('company'), confirmInvoice);
 
 // POST   /api/invoices/:id/upload → Upload PDF to invoice
 router.post('/:id/upload', authorize('company'), upload.single('pdf'), uploadPDF);
+
+// POST   /api/invoices/risk-assessment → Preview risk score
+router.post('/risk-assessment', authorize('company'), getRiskAssessment);
 
 module.exports = router;
