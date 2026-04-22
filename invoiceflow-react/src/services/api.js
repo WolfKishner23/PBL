@@ -8,6 +8,13 @@ const API = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 
+// AI Service Direct URL (Optional: used if frontend needs to call AI directly)
+const AI_BASE_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+const AI_API = axios.create({
+    baseURL: AI_BASE_URL,
+    headers: { 'Content-Type': 'application/json' }
+});
+
 // Attach JWT token to every request; also attach admin secret if admin session is active
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem('invoiceflow_token') || localStorage.getItem('token');

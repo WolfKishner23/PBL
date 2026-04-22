@@ -12,14 +12,17 @@ const app = express();
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests from localhost, Render domains, or custom frontend URL
+        const envOrigin = process.env.FRONTEND_URL;
         const allowedPatterns = [
             /^http:\/\/localhost:\d+$/,
             /\.onrender\.com$/,
+            /\.vercel\.app$/,
         ];
-        const envOrigin = process.env.FRONTEND_URL;
+        
         if (!origin || allowedPatterns.some(p => p.test(origin)) || origin === envOrigin) {
             callback(null, true);
         } else {
+            console.warn(`Blocked by CORS: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },

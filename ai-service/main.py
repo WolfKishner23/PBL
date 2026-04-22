@@ -330,5 +330,7 @@ async def extract_invoice(file: UploadFile = File(...)):
 # ─── Run Server ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    print("[AI] Starting InvoiceFlow AI Service...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Use PORT from environment variable for deployment (e.g. Render/Railway)
+    port = int(os.getenv("PORT", 8000))
+    print(f"[AI] Starting InvoiceFlow AI Service on port {port}...")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True if os.getenv("NODE_ENV") == "development" else False)
