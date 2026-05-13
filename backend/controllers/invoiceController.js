@@ -5,6 +5,7 @@ const axios = require('axios');
 const Invoice = require('../models/Invoice');
 const User = require('../models/User');
 const riskService = require('../services/riskService');
+const { scoreInvoiceLocally } = require('../services/riskScorer');
 
 // ─── Generate Unique Invoice Number: INV-[YEAR]-[3 digits] ───────────────────
 const generateInvoiceNumber = () => {
@@ -273,48 +274,56 @@ exports.submitInvoice = async (req, res) => {
         // Automatically trigger AI risk scoring
         let riskResult = null;
         try {
-            // 1. Calculate Advanced Risk Factors
+            // 1. Calculate Advanced Risk Factors (runs locally in DB — always works)
             const concentration = await riskService.calculateConcentrationRisk(invoice.uploadedBy, invoice.debtorCompany);
             const externalRating = await riskService.getExternalCreditRating(invoice.debtorCompany);
             const internalHistory = await riskService.getInternalPaymentScore(invoice.debtorCompany);
 
             console.log(`[Integration] Concentration: ${concentration.percentage.toFixed(1)}%, Credit Rating: ${externalRating}`);
 
-            // 2. Call AI Service with expanded data points
-            const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
-                invoiceData: {
-                    invoiceNumber: invoice.invoiceNumber,
-                    amount: parseFloat(invoice.amount),
-                    debtorCompany: invoice.debtorCompany,
-                    debtorGST: invoice.debtorGST,
-                    invoiceDate: invoice.invoiceDate,
-                    dueDate: invoice.dueDate,
-                    paymentTerms: invoice.paymentTerms,
-                    industry: invoice.industry,
-                    // New Factors
-                    concentrationRiskScore: concentration.score,
-                    externalCreditRating: externalRating,
-                    internalPaymentScore: internalHistory.score,
-                    invoiceHistoryCount: internalHistory.count
-                }
-            });
+            const invoicePayload = {
+                invoiceNumber: invoice.invoiceNumber,
+                amount: parseFloat(invoice.amount),
+                debtorCompany: invoice.debtorCompany,
+                debtorGST: invoice.debtorGST,
+                invoiceDate: invoice.invoiceDate,
+                dueDate: invoice.dueDate,
+                paymentTerms: invoice.paymentTerms,
+                industry: invoice.industry,
+                concentrationRiskScore: concentration.score,
+                externalCreditRating: externalRating,
+                internalPaymentScore: internalHistory.score,
+                invoiceHistoryCount: internalHistory.count
+            };
 
-            riskResult = aiResponse.data;
+            // 2. Try AI Service first; fall back to local Node.js scorer if unavailable
+            try {
+                const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
+                    invoiceData: invoicePayload
+                }, { timeout: 15000 }); // 15s timeout — don't hang forever
 
-            // Save risk score, level, details to invoice
+                riskResult = aiResponse.data;
+                console.log(`🤖 AI Risk Score for ${invoice.invoiceNumber}: ${riskResult.riskScore} (${riskResult.riskLevel}) [AI Service]`);
+            } catch (aiError) {
+                // AI service rate-limited / cold-starting / down → use local JS scorer
+                console.warn(`⚠️  AI Service unavailable (${aiError.message}). Using local risk scorer...`);
+                riskResult = scoreInvoiceLocally(invoicePayload, concentration, externalRating, internalHistory);
+                console.log(`🧮 Local Risk Score for ${invoice.invoiceNumber}: ${riskResult.riskScore} (${riskResult.riskLevel}) [Local Engine]`);
+            }
+
+            // 3. Save risk score, level, details to invoice
             await invoice.update({
                 riskScore: riskResult.riskScore,
                 riskLevel: riskResult.riskLevel,
                 riskDetails: riskResult.details,
-                status: 'review'  // Change status to 'review'
+                status: 'review'
             });
 
-            console.log(`🤖 AI Risk Score for ${invoice.invoiceNumber}: ${riskResult.riskScore} (${riskResult.riskLevel})`);
-        } catch (aiError) {
-            // AI service unavailable — still submit, just skip risk scoring
-            console.warn('⚠️  AI Service unavailable, skipping risk scoring:', aiError.message);
+        } catch (outerError) {
+            // Extreme fallback — something broke in riskService itself
+            console.error('Risk scoring pipeline failed:', outerError.message);
             await invoice.update({ status: 'review' });
-            riskResult = { message: 'AI service unavailable, risk scoring skipped' };
+            riskResult = { message: 'Risk scoring failed: ' + outerError.message };
         }
 
         // Reload invoice with updated fields
@@ -374,29 +383,35 @@ exports.getRiskAssessment = async (req, res) => {
         const externalRating = await riskService.getExternalCreditRating(debtorCompany);
         const internalHistory = await riskService.getInternalPaymentScore(debtorCompany);
 
-        // 2. Call AI Service
+        const invoicePayload = {
+            amount: parseFloat(amount),
+            debtorCompany,
+            debtorGST,
+            invoiceDate,
+            dueDate,
+            paymentTerms,
+            industry,
+            concentrationRiskScore: concentration.score,
+            externalCreditRating: externalRating,
+            internalPaymentScore: internalHistory.score,
+            invoiceHistoryCount: internalHistory.count
+        };
+
+        // 2. Try AI Service; fall back to local scorer
+        let riskResult;
         try {
             const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/score`, {
-                invoiceData: {
-                    amount: parseFloat(amount),
-                    debtorCompany,
-                    debtorGST,
-                    invoiceDate,
-                    dueDate,
-                    paymentTerms,
-                    industry,
-                    concentrationRiskScore: concentration.score,
-                    externalCreditRating: externalRating,
-                    internalPaymentScore: internalHistory.score,
-                    invoiceHistoryCount: internalHistory.count
-                }
-            });
-
-            res.json({ success: true, riskResult: aiResponse.data });
+                invoiceData: invoicePayload
+            }, { timeout: 15000 });
+            riskResult = aiResponse.data;
+            console.log(`[Preview] AI scored: ${riskResult.riskScore} [AI Service]`);
         } catch (aiError) {
-            console.warn('⚠️  AI Service unavailable during preview:', aiError.message);
-            res.status(503).json({ success: false, error: 'AI Risk Service currently unavailable. Please try again later.' });
+            console.warn(`⚠️  AI Service unavailable during preview (${aiError.message}). Using local scorer.`);
+            riskResult = scoreInvoiceLocally(invoicePayload, concentration, externalRating, internalHistory);
+            console.log(`[Preview] Local scored: ${riskResult.riskScore} [Local Engine]`);
         }
+
+        res.json({ success: true, riskResult });
     } catch (error) {
         console.error('Risk assessment preview error:', error);
         res.status(500).json({ success: false, error: 'Server error during risk assessment' });
