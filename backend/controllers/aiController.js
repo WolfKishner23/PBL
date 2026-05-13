@@ -54,52 +54,53 @@ exports.assessRisk = async (req, res) => {
     }
 };
 
-// ─── EXTRACT INVOICE DATA (OCR) ──────────────────────────────────────────────
+// ─── EXTRACT INVOICE DATA (Local Node.js — no AI service call) ───────────────
+// Previously forwarded the PDF to the Python AI service, which caused HTTP 429
+// rate-limit errors on Render's free tier due to large file transfers.
+// Now uses pdf-parse + regex entirely within Node.js (same logic, no network call).
 exports.extractInvoiceData = async (req, res) => {
+    const fs = require('fs');
+    const { extractTextFromPDF, parseInvoiceFields } = require('../utils/pdfExtractor');
+
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'PDF file is required' });
         }
 
-        // Call Python AI service for OCR
-        const FormData = require('form-data');
-        const fs = require('fs');
-        const formData = new FormData();
-        
-        // Explicitly include filename to help Python service detect file type
-        formData.append('file', fs.createReadStream(req.file.path), {
-            filename: req.file.originalname,
-            contentType: req.file.mimetype
-        });
+        const filePath = req.file.path;
+        console.log(`[Backend] Extracting PDF locally: ${req.file.originalname}`);
 
-        console.log(`[Backend] Sending extraction request to AI Service: ${AI_SERVICE_URL}/api/extract-invoice`);
-        
-        const response = await axios.post(`${AI_SERVICE_URL}/api/extract-invoice`, formData, {
-            headers: formData.getHeaders(),
-            timeout: 60000 // Increased to 60 seconds for OCR fallback
-        });
+        // Step 1: Extract raw text from PDF using pdf-parse
+        const rawText = await extractTextFromPDF(filePath);
 
+        // Step 2: Parse structured fields from the raw text using regex
+        const extracted = parseInvoiceFields(rawText);
+
+        // Step 3: Clean up the uploaded temp file
+        try {
+            fs.unlinkSync(filePath);
+        } catch (cleanupErr) {
+            console.warn('[Backend] Could not delete temp file:', cleanupErr.message);
+        }
+
+        const confidence = rawText && rawText.trim().length > 0 ? 0.85 : 0.0;
+        console.log(`[Backend] Extraction complete. Confidence: ${confidence}`);
 
         res.json({
             success: true,
-            extractedData: response.data
+            extractedData: {
+                success: true,
+                rawText: rawText ? rawText.slice(0, 500) : '',
+                extracted,
+                confidence,
+            }
         });
     } catch (error) {
-        if (error.code === 'ECONNREFUSED') {
-            return res.status(503).json({
-                success: false,
-                error: 'AI Service unavailable'
-            });
-        }
-
-        // Pass through AI service's detailed error message if available
-        const aiErrorDetail = error.response?.data?.detail;
-        console.error('AI extract error:', aiErrorDetail || error.message);
-        
-        res.status(500).json({ 
-            success: false, 
-            error: 'Data extraction failed', 
-            detail: aiErrorDetail || error.message 
+        console.error('[Backend] PDF extraction error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Data extraction failed',
+            detail: error.message
         });
     }
 };
